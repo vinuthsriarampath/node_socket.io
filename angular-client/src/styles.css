@@ -1,0 +1,28 @@
+/* You can add global styles to this file, and also import other style files */
+body {
+    font-family: Arial, sans-serif;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Gradient setup */
+    background: linear-gradient(-45deg, #74ebd5, #9face6, #a18cd1, #fbc2eb);
+    background-size: 400% 400%;
+    animation: gradientMove 10s ease infinite;
+}
+
+@keyframes gradientMove {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}

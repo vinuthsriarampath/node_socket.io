@@ -1,0 +1,111 @@
+.main-div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 2rem 1rem;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    animation: fadeInDown 1.2s cubic-bezier(.4, 0, .2, 1);
+    letter-spacing: 1px;
+}
+
+p {
+    font-size: 1.15rem;
+    margin-bottom: 2rem;
+    opacity: 0.92;
+    color: #f3f3f3;
+    animation: fadeInUp 1.2s cubic-bezier(.4, 0, .2, 1);
+    max-width: 400px;
+    text-align: center;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.logout-btn {
+    padding: 0.75rem 2.2rem;
+    border: none;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: background 0.3s, transform 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+}
+
+.logout-btn:hover,
+.logout-btn:focus {
+    background: rgba(255, 255, 255, 0.32);
+    color: #2d5fa4;
+    transform: scale(1.07);
+    outline: none;
+}
+
+.user-box {
+    margin-top: 1rem;
+    background: #fff;
+    color: #222;
+    padding: 1.25rem 1.5rem;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 520px;
+    text-align: left;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.13);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Fira Mono', 'Consolas', monospace;
+    font-size: 15px;
+    border: 1px solid #e3e8f0;
+}
+
+@media (max-width: 600px) {
+    .main-div {
+        padding: 1rem 0.2rem;
+    }
+
+    .user-box {
+        padding: 1rem 0.5rem;
+        font-size: 13px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    p {
+        font-size: 1rem;
+    }
+}

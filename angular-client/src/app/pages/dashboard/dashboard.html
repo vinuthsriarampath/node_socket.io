@@ -1,0 +1,8 @@
+<div class="main-div">
+    <h1>🎉 Welcome Back!</h1>
+    <p>You’ve successfully logged in. Let’s make today productive!</p>
+    <button class="logout-btn" (click)="logout()">Logout</button>
+    <div class="user-box">
+        {{ currentUser$ | async | json}}
+    </div>      
+</div>

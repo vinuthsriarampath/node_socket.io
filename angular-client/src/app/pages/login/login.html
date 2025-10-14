@@ -1,0 +1,26 @@
+<div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm" (submit)="onSubmit()">
+        <div class="input-group">
+            <label for="email">Email</label>
+            <input type="email" name="email" [(ngModel)]="credentials.email" id="email" required />
+        </div>
+        <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" name="password" [(ngModel)]="credentials.password" id="password" required />
+        </div>
+        <button type="submit" class="login-btn">Login</button>
+    </form>
+    <div class="links">
+        <a routerLink="register">New User ?</a>
+    </div>
+
+    <div class="divider">or continue with</div>
+
+    <button class="social-btn google"
+        onclick="window.location.href='http://localhost:8080/api/auth/google'">Continue with Google</button>
+    <button class="social-btn facebook"
+        onclick="window.location.href='http://localhost:8080/api/auth/facebook'">Continue with Facebook</button>
+    <button class="social-btn github" onclick="window.location.href='http://localhost:8080/api/auth/github'">Continue
+        with GitHub</button>
+</div>

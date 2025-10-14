@@ -1,0 +1,133 @@
+.login-container {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 350px;
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.input-group {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 14px;
+  color: #555;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4e73df;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+  box-sizing: border-box;
+}
+
+.login-btn:hover {
+  background: #3759c8;
+}
+
+.divider {
+  margin: 1.5rem 0;
+  font-size: 14px;
+  color: #777;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.social-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+  color: #fff;
+}
+
+.google {
+  background: #db4437;
+}
+
+.facebook {
+  background: #1877f2;
+}
+
+.github {
+  background: #24292f;
+}
+
+.google:hover {
+  background: #c33c2f;
+}
+
+.facebook:hover {
+  background: #1459b3;
+}
+
+.github:hover {
+  background: #000;
+}
+
+.links{
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 0.75rem 0 0 0.25rem;
+}
+
+.links a {
+  color: #4e73df;
+  text-decoration: none;
+}
+
+.links a:hover {
+  color: #1a41b6;
+  padding-bottom: 0.25rem;
+  border-bottom: 3px solid blue;
+}

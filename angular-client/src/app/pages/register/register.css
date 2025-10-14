@@ -1,0 +1,62 @@
+.register-container {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 420px;
+    backdrop-filter: blur(12px);
+    color: #fff;
+    animation: fadeIn 1.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .input-group {
+    margin-bottom: 1rem;
+  }
+
+  .input-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .input-group input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: #fff;
+    box-sizing: border-box;
+  }
+
+  .register-btn {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 1rem;
+    border: none;
+    border-radius: 8px;
+    background: #4e73df;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+    box-sizing: border-box;
+  }
+
+  .register-btn:hover {
+    background: #3759c8;
+    transform: scale(1.03);
+  }
