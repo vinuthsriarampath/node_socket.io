@@ -1,8 +1,12 @@
 import app from './app.js';
 import mongoose from 'mongoose';
 import { createClient } from 'redis';
+import http from 'http';
 
 const PORT = process.env.PORT;
+
+//CREATING HTTP SERVER
+const server = http.createServer(app);
 
 //CONNECTING TO REDIS
 export const redisClient = createClient({url:process.env.REDIS_URL});
@@ -15,6 +19,6 @@ mongoose.connect(process.env.MONGO_URL)
     .catch(err => console.error(err));
 
 // STARTS THE SERVER
-app.listen(PORT,()=>{
+server.listen(PORT,()=>{
     console.log(`Server running on http://localhost:${PORT}/`)
 })
