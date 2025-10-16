@@ -8,3 +8,12 @@ export const getCurrentUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+export const allUsersExceptMe = async (req,res,next)=> {
+    try{
+        const users = await userService.getAllUsersExceptMe(req.userId);
+        res.status(200).json(users);
+    }catch (err){
+        next(err);
+    }
+}

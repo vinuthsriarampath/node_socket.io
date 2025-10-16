@@ -55,3 +55,8 @@ export const update = async (userId, updates) => {
 export const findById = async (userId) => {
     return User.findById(userId);
 }
+
+//get all users
+export const getAllUsers = async () => {
+    return User.find();
+}
