@@ -1,5 +1,5 @@
 import { verifyToken } from "../utils/jwt.js";
-
+import * as messageService from "../services/message-service.js";
 export default function ChatSocket(io) {
 
     // Middleware to authenticate socket handshake
@@ -39,13 +39,21 @@ export default function ChatSocket(io) {
 
         console.log("Socket connected for user:", userId);
 
-        socket.on("private_message", ({ toUserId, message }) => {
-            // Optional: sanitize/validate message here
-            io.to(String(toUserId)).emit("receive_message", {
-                from: socket.user.id,
-                message,
-                timestamp: Date.now()
-            });
+        socket.on("private_message", async ({ toUserId, message }) =>{
+            try{
+                // Save message in DB
+                const newMessage = await messageService.saveMessage(userId, toUserId, message);
+
+                // Emit to receiver if online
+                io.to(toUserId.toString()).emit("receive_message", newMessage);
+
+                // Emit confirmation to sender
+                socket.emit("message_sent", newMessage);
+
+            }catch (error){
+                console.error("Error saving message:", error);
+                socket.emit("error_saving_message", { error: "Message not saved" });
+            }
         });
 
         socket.on("disconnect", (reason) => {
