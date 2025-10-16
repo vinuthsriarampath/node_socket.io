@@ -19,7 +19,7 @@ export const redisClient = createClient({url:process.env.REDIS_URL});
 redisClient.on('error', err => console.error('Redis Client Error', err));
 await redisClient.connect(); // Connect asynchronously
 
-// CONECTING TO MONGO DATABSE 
+// CONNECTING TO MONGO DATABASE
 mongoose.connect(process.env.MONGO_URL)
     .then(() => console.log("MongoDB connected successfully!"))
     .catch(err => console.error(err));

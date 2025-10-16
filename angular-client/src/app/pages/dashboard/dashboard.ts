@@ -31,8 +31,7 @@ export class Dashboard implements OnInit, OnDestroy {
     this.users$ = this.userService.getAllUsersExceptMe();
 
     this.userService.getCurrentUser().subscribe(user => {
-      this.currentUserId = user.id;
-      this.socketService.connect(user.id);
+      this.socketService.connect();
 
       this.messageSub = this.socketService.onMessage().subscribe(data => {
         if (
