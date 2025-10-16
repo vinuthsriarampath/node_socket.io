@@ -10,8 +10,8 @@ const PORT = process.env.PORT;
 //CREATING HTTP SERVER
 const server = http.createServer(app);
 
-//CONTECT TO SOCKET.IO
-const io = new Server(server);
+//CONNECT TO SOCKET.IO
+const io = new Server(server, { cors: { origin: process.env.FRONTEND_URL }});
 ChatSocket(io);
 
 //CONNECTING TO REDIS
