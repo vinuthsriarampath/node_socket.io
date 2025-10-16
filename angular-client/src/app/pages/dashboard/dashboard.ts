@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/user/user-service';
 import { Auth } from '../../services/auth/auth';
-import { io, Socket } from 'socket.io-client';
-import { Observable } from 'rxjs';
+import {Observable, Subscription} from 'rxjs';
+import {SocketService} from '../../services/sokcets/socket-service';
 
 @Component({
   selector: 'app-dashboard',
@@ -12,17 +12,19 @@ import { Observable } from 'rxjs';
   imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.html',
 })
-export class Dashboard implements OnInit {
+export class Dashboard implements OnInit, OnDestroy {
   users$!: Observable<any[]>;
   currentUserId: string = '';
   selectedUser: any = null;
   messageText = '';
   messages: { from: string; message: string }[] = [];
-  private socket!: Socket;
+
+  private messageSub!: Subscription;
 
   constructor(
     private readonly userService: UserService,
-    private readonly authService: Auth
+    private readonly authService: Auth,
+    private readonly socketService:SocketService
   ) {}
 
   ngOnInit() {
@@ -30,17 +32,9 @@ export class Dashboard implements OnInit {
 
     this.userService.getCurrentUser().subscribe(user => {
       this.currentUserId = user.id;
+      this.socketService.connect(user.id);
 
-      this.socket = io('http://localhost:8080', {
-        auth: { userId: user.id },
-      });
-
-      // Listen only after socket is created
-      this.socket.on('connect', () => {
-        console.log('Socket connected:', this.socket.id);
-      });
-
-      this.socket.on('receive_message', (data) => {
+      this.messageSub = this.socketService.onMessage().subscribe(data => {
         if (
           this.selectedUser &&
           (data.from === this.selectedUser.id || data.from === this.currentUserId)
@@ -59,13 +53,13 @@ export class Dashboard implements OnInit {
   sendMessage() {
     if (!this.messageText.trim() || !this.selectedUser) return;
 
-    const payload = {
-      toUserId: this.selectedUser.id,
-      message: this.messageText.trim(),
-    };
-
-    this.socket.emit('private_message', payload);
+    this.socketService.sendMessage(this.selectedUser.id, this.messageText);
     this.messages.push({ from: this.currentUserId, message: this.messageText });
     this.messageText = '';
+  }
+
+  ngOnDestroy() {
+    if (this.messageSub) this.messageSub.unsubscribe();
+    this.socketService.disconnect();
   }
 }
