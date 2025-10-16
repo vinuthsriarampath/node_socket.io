@@ -6,12 +6,16 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class UserService {
-  private apiUrl = 'http://localhost:8080/api/users';
+  private readonly apiUrl = 'http://localhost:8080/api/users';
 
   constructor(private readonly http:HttpClient){}
 
   getCurrentUser(): Observable<any> {
     return this.http.get(`${this.apiUrl}/me`, {withCredentials:true})
   }
-  
+
+  getAllUsersExceptMe(): Observable<any>{
+    return this.http.get(`${this.apiUrl}/all-except-me`);
+  }
+
 }
