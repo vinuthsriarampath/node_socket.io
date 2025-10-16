@@ -9,7 +9,7 @@
           *ngFor="let user of users$ | async"
           (click)="selectUser(user)"
           class="cursor-pointer hover:bg-gray-700 p-3 border-b border-gray-700 transition"
-          [class.bg-gray-700]="selectedUser?.id === user.id"
+          [class.bg-gray-700]="(selectedUser$ | async)?.id === user.id"
         >
           <div class="font-medium">{{ user.firstName }} {{ user.lastName }}</div>
           <div class="text-xs text-gray-400">{{ user.email }}</div>
@@ -21,58 +21,49 @@
   <!-- RIGHT CHAT AREA -->
   <div class="flex-1 flex flex-col">
     <!-- Top Bar -->
-    <div
-      class="p-4 border-b border-gray-700 bg-gray-800 text-lg font-semibold"
-      *ngIf="selectedUser; else noChatSelected"
-    >
-      Chat with {{ selectedUser.firstName }} {{ selectedUser.lastName }}
-    </div>
+    <ng-container *ngIf="selectedUser$ | async as selectedUser; else noChatSelected">
+      <div class="p-4 border-b border-gray-700 bg-gray-800 text-lg font-semibold">
+        Chat with {{ selectedUser.firstName }} {{ selectedUser.lastName }}
+      </div>
+
+      <!-- Chat Messages -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900">
+        <div *ngFor="let msg of messages$ | async"
+             [ngClass]="{ 'text-right': msg.from === currentUserId, 'text-left': msg.from !== currentUserId }">
+          <div
+            [ngClass]="{
+              'bg-blue-600 text-white ml-auto': msg.from === currentUserId,
+              'bg-gray-700 text-gray-100 mr-auto': msg.from !== currentUserId
+            }"
+            class="inline-block px-4 py-2 rounded-2xl max-w-xs break-words"
+          >
+            {{ msg.message }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="p-4 bg-gray-800 border-t border-gray-700 flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Type your message..."
+          class="flex-1 p-2 rounded-xl bg-gray-700 text-white border border-gray-600 focus:outline-none"
+          [(ngModel)]="messageText"
+          (keydown.enter)="sendMessage()"
+        />
+        <button
+          (click)="sendMessage()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl transition font-medium"
+        >
+          Send
+        </button>
+      </div>
+    </ng-container>
 
     <ng-template #noChatSelected>
       <div class="p-4 border-b border-gray-700 bg-gray-800 text-lg font-semibold">
         Select a user to start chatting
       </div>
     </ng-template>
-
-    <!-- Chat Messages -->
-    <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900">
-      <div
-        *ngFor="let msg of messages"
-        [ngClass]="{
-          'text-right': msg.from === currentUserId,
-          'text-left': msg.from !== currentUserId
-        }"
-      >
-        <div
-          [ngClass]="{
-            'bg-blue-600 text-white ml-auto': msg.from === currentUserId,
-            'bg-gray-700 text-gray-100 mr-auto': msg.from !== currentUserId
-          }"
-          class="inline-block px-4 py-2 rounded-2xl max-w-xs break-words"
-        >
-          {{ msg.message }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Chat Input -->
-    <div
-      class="p-4 bg-gray-800 border-t border-gray-700 flex items-center gap-2"
-      *ngIf="selectedUser"
-    >
-      <input
-        type="text"
-        placeholder="Type your message..."
-        class="flex-1 p-2 rounded-xl bg-gray-700 text-white border border-gray-600 focus:outline-none"
-        [(ngModel)]="messageText"
-        (keydown.enter)="sendMessage()"
-      />
-      <button
-        (click)="sendMessage()"
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-xl transition font-medium"
-      >
-        Send
-      </button>
-    </div>
   </div>
 </div>
