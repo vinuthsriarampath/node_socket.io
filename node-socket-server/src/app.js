@@ -7,6 +7,7 @@ import passport from 'passport';
 import './config/passport.js';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import {errorHandler} from "./middlewares/error-middleware.js";
 
 const app = express();
 
@@ -31,5 +32,14 @@ app.use(helmet({
 app.use(passport.initialize());
 
 app.use('/api', indexRoute);
+
+app.use((_req, res) => {
+    res.status(404).json({
+        success: false,
+        message: "Route not found",
+    });
+});
+
+app.use(errorHandler);
 
 export default app;
