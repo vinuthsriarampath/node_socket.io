@@ -7,14 +7,14 @@
     padding: 2rem 1rem;
 }
 
-h1 {
+/* h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: #fff;
     text-shadow: 0 2px 8px rgba(0,0,0,0.12);
     animation: fadeInDown 1.2s cubic-bezier(.4,0,.2,1);
     letter-spacing: 1px;
-}
+} */
 
 p {
     font-size: 1.15rem;

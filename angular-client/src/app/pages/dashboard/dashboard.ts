@@ -1,43 +1,71 @@
-import { AsyncPipe, CommonModule, JsonPipe } from '@angular/common';
-import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/user/user-service';
-import { catchError, last, Observable, of } from 'rxjs';
 import { Auth } from '../../services/auth/auth';
-import { Router } from '@angular/router';
+import { io, Socket } from 'socket.io-client';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [
-    JsonPipe,
-    AsyncPipe,
-    CommonModule
-  ],
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css'
 })
-export class Dashboard {
+export class Dashboard implements OnInit {
+  users$!: Observable<any[]>;
+  currentUserId: string = '';
+  selectedUser: any = null;
+  messageText = '';
+  messages: { from: string; message: string }[] = [];
+  private socket!: Socket;
 
-  currentUser$: Observable<any>;
+  constructor(
+    private readonly userService: UserService,
+    private readonly authService: Auth
+  ) {}
 
-  constructor(private readonly userService:UserService,private readonly authService:Auth , private readonly router:Router ){
-    this.currentUser$=this.userService.getCurrentUser().pipe(
-      catchError(err => {
-        alert(err.message);
-        return of(null); // Fallback to null or empty object on error
-      })
-    );
+  ngOnInit() {
+    this.users$ = this.userService.getAllUsersExceptMe();
+
+    this.userService.getCurrentUser().subscribe(user => {
+      this.currentUserId = user.id;
+
+      this.socket = io('http://localhost:8080', {
+        auth: { userId: user.id },
+      });
+
+      // Listen only after socket is created
+      this.socket.on('connect', () => {
+        console.log('Socket connected:', this.socket.id);
+      });
+
+      this.socket.on('receive_message', (data) => {
+        if (
+          this.selectedUser &&
+          (data.from === this.selectedUser.id || data.from === this.currentUserId)
+        ) {
+          this.messages.push(data);
+        }
+      });
+    });
   }
 
-  logout(){
-    this.authService.logout().subscribe({
-      next:(res)=>{
-        console.info(res);
-        this.router.navigate(['']);
-        alert(res.message);
-      },
-      error:(err)=>{
-        console.error(err.message);
-      }
-    })
+  selectUser(user: any) {
+    this.selectedUser = user;
+    this.messages = []; // Optionally clear old chat when switching
+  }
+
+  sendMessage() {
+    if (!this.messageText.trim() || !this.selectedUser) return;
+
+    const payload = {
+      toUserId: this.selectedUser.id,
+      message: this.messageText.trim(),
+    };
+
+    this.socket.emit('private_message', payload);
+    this.messages.push({ from: this.currentUserId, message: this.messageText });
+    this.messageText = '';
   }
 }
