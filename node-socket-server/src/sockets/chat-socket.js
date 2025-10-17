@@ -1,6 +1,10 @@
 import { verifyToken } from "../utils/jwt.js";
 import * as messageService from "../services/message-service.js";
+
+const onlineUsers = new Map();
+
 export default function ChatSocket(io) {
+
 
     // Middleware to authenticate socket handshake
     io.use((socket, next) => {
@@ -35,6 +39,12 @@ export default function ChatSocket(io) {
         // Socket is authenticated at this point
         const userId = socket.user.id;
 
+        // Add user to the online list
+        onlineUsers.set(userId, socket.id);
+
+        // Notify online users to all connected clients
+        io.emit("user_status_change", { userId, status: "online" });
+
         socket.join(userId); // private room per user
 
         console.log("Socket connected for user:", userId);
@@ -57,7 +67,15 @@ export default function ChatSocket(io) {
         });
 
         socket.on("disconnect", (reason) => {
+            //remove user from online list
+            onlineUsers.delete(userId);
+
+            // Notify online users to all connected clients
+            io.emit("user_status_change", { userId, status: "offline" });
+
             console.log(`User disconnected: ${userId} — reason: ${reason}`);
         });
     });
 }
+
+export const getOnlineUsers = () => Array.from(onlineUsers.keys());
