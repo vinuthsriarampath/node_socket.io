@@ -18,4 +18,7 @@ export class UserService {
     return this.http.get(`${this.apiUrl}/all-except-me`);
   }
 
+  getAllOnlineUsers(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/online`);
+  }
 }
