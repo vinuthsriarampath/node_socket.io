@@ -13,3 +13,16 @@ export const getAllMessagesBySenderIdAndReceiverId = (senderId, receiverId) => {
         ],
     }).sort({createdAt: 1});
 }
+
+export const markManyMessagesByUserAsRead =async (messageIds,userId) => {
+    await Message.updateMany(
+        { _id: { $in: messageIds }, receiverId: userId },
+        { $set: { read: true, readAt: new Date() } }
+    )
+}
+
+export const getMessagesByIds = (messageIds) => {
+    return Message.find(
+        { _id: { $in: messageIds } }
+    );
+}

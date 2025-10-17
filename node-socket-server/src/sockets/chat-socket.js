@@ -66,6 +66,26 @@ export default function ChatSocket(io) {
             }
         });
 
+        socket.on("mark_as_read", async ({ messageIds }) => {
+            try {
+                if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+
+                await messageService.markMessagesAsReadByUser(messageIds, userId);
+
+                // Notify sender(s)
+                const updatedMessages = await messageService.getMessagesByMessageIdList(messageIds);
+                updatedMessages.forEach((msg) => {
+                    io.to(msg.senderId.toString()).emit("message_read", {
+                        _id: msg._id,
+                        read: msg.read,
+                        readAt: msg.readAt,
+                    });
+                });
+            } catch (err) {
+                console.error("Error marking messages as read:", err);
+            }
+        });
+
         socket.on("disconnect", (reason) => {
             //remove user from online list
             onlineUsers.delete(userId);
