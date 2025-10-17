@@ -1,7 +1,8 @@
 import {Injectable} from '@angular/core';
 import {io, Socket} from 'socket.io-client';
-import {Observable} from 'rxjs';
+import {BehaviorSubject, Observable} from 'rxjs';
 import {Auth} from '../auth/auth';
+import {UserService} from '../user/user-service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +10,16 @@ import {Auth} from '../auth/auth';
 export class SocketService {
   private socket!: Socket;
 
-  constructor(private readonly auth: Auth) {
+  private readonly onlineUsersSubject = new BehaviorSubject<Set<string>>(new Set<string>());
+  onlineUsers$ = this.onlineUsersSubject.asObservable();
+
+  constructor(
+    private readonly auth: Auth,
+    private readonly userService: UserService
+  ) {
+    this.userService.getAllOnlineUsers().subscribe(userIds => {
+      this.onlineUsersSubject.next(new Set(userIds));
+    });
   }
 
   connect() {
@@ -19,6 +29,13 @@ export class SocketService {
 
     this.socket = io('http://localhost:8080', {
       auth: {token} // token will be sent in the handshake
+    });
+
+    this.socket.on('user_status_change', ({userId, status}) => {
+      const current = new Set(this.onlineUsersSubject.value);
+      if (status === 'online') current.add(userId);
+      else current.delete(userId);
+      this.onlineUsersSubject.next(current);
     });
 
     this.socket.on('connect', () => {
