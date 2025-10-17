@@ -3,6 +3,7 @@ import {io, Socket} from 'socket.io-client';
 import {BehaviorSubject, Observable} from 'rxjs';
 import {Auth} from '../auth/auth';
 import {UserService} from '../user/user-service';
+import {MessageDto} from '../../types/messageDto';
 
 @Injectable({
   providedIn: 'root'
@@ -57,11 +58,19 @@ export class SocketService {
     this.socket.emit('private_message', {toUserId, message});
   }
 
-  onMessage(): Observable<any> {
+  onMessage(): Observable<MessageDto> {
     return new Observable(observer => {
-      this.socket.on('receive_message', data => {
+
+      const handler = (data: MessageDto) => {
         observer.next(data);
-      });
+      };
+      this.socket.on('receive_message', handler);
+      this.socket.on('message_sent',handler)
+
+      return () => {
+        this.socket.off('receive_message', handler);
+        this.socket.off('message_sent',handler)
+      };
     });
   }
 
