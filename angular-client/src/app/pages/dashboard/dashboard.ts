@@ -30,7 +30,7 @@ export class Dashboard implements OnInit, OnDestroy {
   constructor(
     private readonly userService: UserService,
     private readonly authService: Auth,
-    private readonly socketService: SocketService,
+    protected readonly socketService: SocketService,
     private readonly messageService: MessageService,
   ) {}
 
