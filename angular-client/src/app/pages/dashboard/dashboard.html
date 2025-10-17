@@ -11,8 +11,20 @@
           class="cursor-pointer hover:bg-gray-700 p-3 border-b border-gray-700 transition"
           [class.bg-gray-700]="(selectedUser$ | async)?.id === user.id"
         >
-          <div class="font-medium">{{ user.firstName }} {{ user.lastName }}</div>
-          <div class="text-xs text-gray-400">{{ user.email }}</div>
+          <div>
+            <div class="font-medium">{{ user.firstName }} {{ user.lastName }}</div>
+            <div class="text-xs text-gray-400">{{ user.email }}</div>
+          </div>
+
+
+          <!-- Online/offline indicator -->
+          <ng-container *ngIf="(socketService.onlineUsers$ | async) as onlineUsers">
+            <div
+              class=" text-xs px-2 w-fit rounded-full"
+              [ngClass]="onlineUsers.has(user.id) ? 'bg-green-500' : 'bg-gray-500'"
+              title="{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}"
+            >{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}</div>
+          </ng-container>
         </li>
       </ul>
     </div>
