@@ -86,6 +86,16 @@ export default function ChatSocket(io) {
             }
         });
 
+        // Notify when the user starts typing
+        socket.on("typing", ({ toUserId }) => {
+            io.to(String(toUserId)).emit("user_typing", { fromUserId: userId });
+        });
+
+        // Notify when the user stops typing
+        socket.on("stop_typing", ({ toUserId }) => {
+            io.to(String(toUserId)).emit("user_stopped_typing", { fromUserId: userId });
+        });
+
         socket.on("disconnect", (reason) => {
             //remove user from online list
             onlineUsers.delete(userId);
