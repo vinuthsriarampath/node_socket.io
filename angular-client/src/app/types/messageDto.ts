@@ -5,7 +5,9 @@ export interface MessageDto {
   senderId: string,
   receiverId: string,
   message: string,
-  status: MessageStatus
+  status: MessageStatus,
+  read: boolean,
+  readAt: Date,
   createdAt: Date,
   updatedAt: Date
 }

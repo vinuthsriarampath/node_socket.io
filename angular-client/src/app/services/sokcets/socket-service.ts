@@ -14,6 +14,9 @@ export class SocketService {
   private readonly onlineUsersSubject = new BehaviorSubject<Set<string>>(new Set<string>());
   onlineUsers$ = this.onlineUsersSubject.asObservable();
 
+  private readonly messageReadSubject = new BehaviorSubject<MessageDto | null>(null);
+  messageRead$ = this.messageReadSubject.asObservable();
+
   constructor(
     private readonly auth: Auth,
     private readonly userService: UserService
@@ -43,6 +46,11 @@ export class SocketService {
       console.log('Socket connected:', this.socket?.id);
     });
 
+    // listen for message_read notifications
+    this.socket.on('message_read', (payload: MessageDto) => {
+      this.messageReadSubject.next(payload);
+    });
+
     this.socket.on('connect_error', (err: any) => {
       console.error('Socket connect_error:', err?.message || err);
       // If unauthorized -> tell the app. Later we'll refresh and reconnect in Feature 5.
@@ -53,6 +61,11 @@ export class SocketService {
     });
   }
 
+  // allow components to emit mark_as_read
+  markMessagesAsRead(messageIds: string[]) {
+    if (!this.socket) return;
+    this.socket.emit('mark_as_read', { messageIds });
+  }
 
   sendMessage(toUserId: string, message: string) {
     this.socket.emit('private_message', {toUserId, message});

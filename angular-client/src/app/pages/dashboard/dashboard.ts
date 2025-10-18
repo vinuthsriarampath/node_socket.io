@@ -53,8 +53,25 @@ export class Dashboard implements OnInit, OnDestroy {
         ) {
           const updated = [...this.messagesSubject.value, data];
           this.messagesSubject.next(updated);
+          if(data.senderId === this.selectedUserSubject.value?.id){
+            const unreadIds=updated.filter(m => !m.read).map(m => m._id).filter(Boolean);
+            this.socketService.markMessagesAsRead(unreadIds);
+          }
         }
       });
+
+      // listen for read receipts and update local messages
+      this.socketService.messageRead$.subscribe(evt => {
+        if (!evt) return;
+        const updated = this.messagesSubject.value.map(m => {
+          if (m._id === evt._id) {
+            return { ...m, read: true, readAt: evt.readAt };
+          }
+          return m;
+        });
+        this.messagesSubject.next(updated);
+      });
+
     });
   }
 
@@ -62,7 +79,22 @@ export class Dashboard implements OnInit, OnDestroy {
     this.selectedUserSubject.next(user);
     this.messageService
       .getAllMessagesBySenderIdAndReceiverId(user.id)
-      .subscribe(messages => this.messagesSubject.next(messages));
+      .subscribe(messages => {
+        this.messagesSubject.next(messages);
+
+        // mark unread messages (where current user is receiver) as read
+        const unreadIds = messages
+          .filter(m => m.receiverId === this.currentUserId && !m.read)
+          .map(m => m._id)
+          .filter(Boolean);
+
+        if (unreadIds.length) {
+          this.socketService.markMessagesAsRead(unreadIds);
+          // Optimistically update UI
+          const readMessages = messages.map(m => unreadIds.includes(m._id) ? { ...m, read: true, readAt: new Date() } : m);
+          this.messagesSubject.next(readMessages);
+        }
+      });
   }
 
   sendMessage() {
