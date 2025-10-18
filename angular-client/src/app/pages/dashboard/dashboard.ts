@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription, BehaviorSubject } from 'rxjs';
 import { UserService } from '../../services/user/user-service';
 import { Auth } from '../../services/auth/auth';
 import { SocketService } from '../../services/sokcets/socket-service';
 import { MessageService } from '../../services/messages/message-service';
-import {MessageDto} from '../../types/messageDto';
+import { MessageDto } from '../../types/messageDto';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,7 +17,7 @@ import {MessageDto} from '../../types/messageDto';
 })
 export class Dashboard implements OnInit, OnDestroy {
   users$!: Observable<any[]>;
-  currentUserId: string = '';
+  currentUserId = '';
 
   private readonly selectedUserSubject = new BehaviorSubject<any | null>(null);
   selectedUser$ = this.selectedUserSubject.asObservable();
@@ -28,11 +28,17 @@ export class Dashboard implements OnInit, OnDestroy {
   messageText = '';
   private messageSub!: Subscription;
 
+  isTyping = false;
+  typingUserId: string | null = null;
+  typingTimeout: any;
+
   constructor(
     private readonly userService: UserService,
     private readonly authService: Auth,
     protected readonly socketService: SocketService,
     private readonly messageService: MessageService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly zone: NgZone
   ) {}
 
   ngOnInit() {
@@ -42,47 +48,78 @@ export class Dashboard implements OnInit, OnDestroy {
       this.currentUserId = user.id;
       this.socketService.connect();
 
+      /** Handle new messages */
       this.messageSub = this.socketService.onMessage().subscribe(data => {
-        const selected = this.selectedUserSubject.value;
+        this.zone.run(() => {
+          const selected = this.selectedUserSubject.value;
+          if (
+            selected &&
+            ((data.senderId === selected.id && data.receiverId === this.currentUserId) ||
+              (data.senderId === this.currentUserId && data.receiverId === selected.id))
+          ) {
+            this.isTyping = false;
+            const updated = [...this.messagesSubject.value, data];
+            this.messagesSubject.next(updated);
 
-        // Show only if chat is currently open between sender and receiver
-        if (
-          selected &&
-          ((data.senderId === selected.id && data.receiverId === this.currentUserId) || // received message
-            (data.senderId === this.currentUserId && data.receiverId === selected.id))   // sent  message
-        ) {
-          const updated = [...this.messagesSubject.value, data];
-          this.messagesSubject.next(updated);
-          if(data.senderId === this.selectedUserSubject.value?.id){
-            const unreadIds=updated.filter(m => !m.read).map(m => m._id).filter(Boolean);
-            this.socketService.markMessagesAsRead(unreadIds);
+            if (data.senderId === selected.id) {
+              const unreadIds = updated.filter(m => !m.read).map(m => m._id).filter(Boolean);
+              this.socketService.markMessagesAsRead(unreadIds);
+            }
           }
-        }
+        });
       });
 
-      // listen for read receipts and update local messages
+      /** Listen for read receipts */
       this.socketService.messageRead$.subscribe(evt => {
         if (!evt) return;
-        const updated = this.messagesSubject.value.map(m => {
-          if (m._id === evt._id) {
-            return { ...m, read: true, readAt: evt.readAt };
-          }
-          return m;
+        this.zone.run(() => {
+          const updated = this.messagesSubject.value.map(m =>
+            m._id === evt._id ? { ...m, read: true, readAt: evt.readAt } : m
+          );
+          this.messagesSubject.next(updated);
         });
-        this.messagesSubject.next(updated);
       });
 
+      /** Typing indicator */
+      this.socketService.onTyping().subscribe(({ fromUserId }) => {
+        this.zone.run(() => {
+          const selected = this.selectedUserSubject.value;
+          if (selected && selected.id === fromUserId) {
+            this.typingUserId = fromUserId;
+            this.isTyping = true;
+
+            clearTimeout(this.typingTimeout);
+            this.typingTimeout = setTimeout(() => {
+              this.isTyping = false;
+              this.cdr.markForCheck();
+            }, 2000);
+
+            this.cdr.markForCheck();
+          }
+        });
+      });
+
+      this.socketService.onStopTyping().subscribe(({ fromUserId }) => {
+        this.zone.run(() => {
+          const selected = this.selectedUserSubject.value;
+          if (selected && selected.id === fromUserId) {
+            this.isTyping = false;
+            this.cdr.markForCheck();
+          }
+        });
+      });
     });
   }
 
   selectUser(user: any) {
+    this.isTyping = false;
+    this.typingUserId = null;
     this.selectedUserSubject.next(user);
-    this.messageService
-      .getAllMessagesBySenderIdAndReceiverId(user.id)
-      .subscribe(messages => {
+
+    this.messageService.getAllMessagesBySenderIdAndReceiverId(user.id).subscribe(messages => {
+      this.zone.run(() => {
         this.messagesSubject.next(messages);
 
-        // mark unread messages (where current user is receiver) as read
         const unreadIds = messages
           .filter(m => m.receiverId === this.currentUserId && !m.read)
           .map(m => m._id)
@@ -90,20 +127,31 @@ export class Dashboard implements OnInit, OnDestroy {
 
         if (unreadIds.length) {
           this.socketService.markMessagesAsRead(unreadIds);
-          // Optimistically update UI
-          const readMessages = messages.map(m => unreadIds.includes(m._id) ? { ...m, read: true, readAt: new Date() } : m);
+          const readMessages = messages.map(m =>
+            unreadIds.includes(m._id) ? { ...m, read: true, readAt: new Date() } : m
+          );
           this.messagesSubject.next(readMessages);
         }
       });
+    });
+  }
+
+  onMessageInput() {
+    const selectedUser = this.selectedUserSubject.value;
+    if (selectedUser) {
+      this.socketService.sendTyping(selectedUser.id);
+
+      clearTimeout(this.typingTimeout);
+      this.typingTimeout = setTimeout(() => {
+        this.socketService.sendStopTyping(selectedUser.id);
+      }, 1500);
+    }
   }
 
   sendMessage() {
     const selectedUser = this.selectedUserSubject.value;
     if (!this.messageText.trim() || !selectedUser) return;
-
-    // Send message to server
     this.socketService.sendMessage(selectedUser.id, this.messageText);
-
     this.messageText = '';
   }
 

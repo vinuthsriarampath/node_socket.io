@@ -82,25 +82,52 @@ export class SocketService {
     this.socket.emit('mark_as_read', { messageIds });
   }
 
+  //Send a message to a user
   sendMessage(toUserId: string, message: string) {
     this.socket.emit('private_message', {toUserId, message});
   }
 
+  //listen for messages
   onMessage(): Observable<MessageDto> {
     return new Observable(observer => {
 
       const handler = (data: MessageDto) => {
         observer.next(data);
       };
-      this.socket.on('receive_message', handler);
-      this.socket.on('message_sent',handler)
+      this.socket.on('receive_message', handler); //listen to messages received from another user
+      this.socket.on('message_sent',handler); //listen to messages successfully send to another user
 
-      return () => {
+      return () => { //close listeners
         this.socket.off('receive_message', handler);
         this.socket.off('message_sent',handler)
       };
     });
   }
+
+  //notify the recipient user that the sender is typing
+  sendTyping(toUserId: string) {
+    this.socket.emit("typing", { toUserId });
+  }
+
+  //notify the recipient user that the sender has stopped typing
+  sendStopTyping(toUserId: string) {
+    this.socket.emit("stop_typing", { toUserId });
+  }
+
+  //listening for notifications from other users that they are typing
+  onTyping(): Observable<any> {
+    return new Observable((observer) => {
+      this.socket.on("user_typing", (data) => observer.next(data));
+    });
+  }
+
+  //listening for notifications from other users that they have stopped typing
+  onStopTyping(): Observable<any> {
+    return new Observable((observer) => {
+      this.socket.on("user_stopped_typing", (data) => observer.next(data));
+    });
+  }
+
 
   disconnect() {
     if (this.socket) {

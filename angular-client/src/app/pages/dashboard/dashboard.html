@@ -66,11 +66,22 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" transform="translate(10,0)" />
                 </svg>
-
               </ng-container>
             </span>
+
+
           </div>
         </div>
+            <!-- Typing indicator -->
+            @if (isTyping) {
+              <div class="px-4 py-2">
+                <div class="flex space-x-1">
+                  <div class="w-2 h-2 bg-white/30 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                  <div class="w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
+                  <div class="w-2 h-2 bg-white/90 rounded-full animate-bounce" style="animation-delay: 0.6s;"></div>
+                </div>
+              </div>
+            }
       </div>
 
       <!-- Chat Input -->
@@ -80,6 +91,7 @@
           placeholder="Type your message..."
           class="flex-1 p-2 rounded-xl bg-gray-700 text-white border border-gray-600 focus:outline-none"
           [(ngModel)]="messageText"
+          (input)="onMessageInput()"
           (keydown.enter)="sendMessage()"
         />
         <button
