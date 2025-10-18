@@ -32,7 +32,9 @@ export class SocketService {
     const token = this.auth.getAccessToken();
 
     this.socket = io('http://localhost:8080', {
-      auth: {token} // token will be sent in the handshake
+      auth: {token}, // token will be sent in the handshake
+      reconnectionAttempts: 3,
+      reconnectionDelay: 2000,
     });
 
     this.socket.on('user_status_change', ({userId, status}) => {
@@ -42,8 +44,21 @@ export class SocketService {
       this.onlineUsersSubject.next(current);
     });
 
-    this.socket.on('connect', () => {
-      console.log('Socket connected:', this.socket?.id);
+    this.socket.on('connect', () => console.info('Socket connected:', this.socket?.id));
+    this.socket.on('disconnect', async (reason: any) => {
+      console.warn('Socket disconnected:', reason);
+      if (reason === 'io server disconnect' || reason === 'unauthorized') {
+        // server kicked us -> try refresh & reconnect
+        this.auth.refreshToken().subscribe((data)=>{
+          if(data.accessToken){
+            console.log('🔄 Access token refreshed, reconnecting...');
+            this.connect();
+          }else {
+            console.error('❌ Token refresh failed, logging out...');
+            this.auth.logout();
+          }
+        });
+      }
     });
 
     // listen for message_read notifications
