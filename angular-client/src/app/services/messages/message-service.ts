@@ -14,4 +14,7 @@ export class MessageService {
     return this.http.get<MessageDto[]>(`${this.apiUrl}/${receiverId}`);
   }
 
+  getUnreadCounts(): Observable<{senderId: string; count: number}[]>{
+    return this.http.get<{senderId: string; count: number}[]>(`${this.apiUrl}/unread`);
+  }
 }

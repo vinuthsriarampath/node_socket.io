@@ -21,6 +21,9 @@ export class SocketService {
   private readonly notificationSubject = new BehaviorSubject<MessageNotification | null>(null);
   notification$ = this.notificationSubject.asObservable();
 
+  private readonly unreadCountsSubject = new BehaviorSubject<Map<string, number>>(new Map());
+  unreadCounts$ = this.unreadCountsSubject.asObservable();
+
   constructor(
     private readonly auth: Auth,
     private readonly userService: UserService
@@ -72,6 +75,14 @@ export class SocketService {
 
     this.socket.on('notification', (payload) => {
       this.notificationSubject.next(payload);
+    });
+
+    /** Unread Message Count */
+    this.socket.on('unread_update', (data: any[]) => {
+      console.log("unread message update received",data);
+      const map = new Map<string, number>();
+      data.forEach(item => map.set(item.senderId, item.count));
+      this.unreadCountsSubject.next(map);
     });
 
     this.socket.on('connect_error', (err: any) => {

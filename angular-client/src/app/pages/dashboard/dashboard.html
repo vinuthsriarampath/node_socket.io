@@ -14,7 +14,11 @@
           <div>
             <div class="flex justify-between gap-2">
               <p class="font-medium">{{ user.firstName }} {{ user.lastName }}</p>
-              <div *ngIf="hasNotificationFrom(user.id)" class=" bg-yellow-500 text-white text-xs rounded-full h-2 w-2"></div>
+<!--              <div *ngIf="hasNotificationFrom(user.id)" class=" bg-yellow-500 text-white text-xs rounded-full h-2 w-2"></div> // Notification batch-->
+              <!-- 📨 Unread message count -->
+              <div *ngIf="unreadCounts.get(user.id) && unreadCounts.get(user.id)! > 0" class="bg-red-600 text-xs max-w-fit rounded-full px-2 py-0.5">
+                {{ unreadCounts.get(user.id) }}
+              </div>
             </div>
             <div class="text-xs text-gray-400">{{ user.email }}</div>
           </div>
@@ -28,6 +32,8 @@
               title="{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}"
             >{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}</div>
           </ng-container>
+
+
 
         </li>
       </ul>

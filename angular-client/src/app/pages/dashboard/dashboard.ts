@@ -1,12 +1,12 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, NgZone } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Observable, Subscription, BehaviorSubject } from 'rxjs';
-import { UserService } from '../../services/user/user-service';
-import { Auth } from '../../services/auth/auth';
-import { SocketService } from '../../services/sokcets/socket-service';
-import { MessageService } from '../../services/messages/message-service';
-import { MessageDto } from '../../types/messageDto';
+import {CommonModule} from '@angular/common';
+import {Component, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, NgZone} from '@angular/core';
+import {FormsModule} from '@angular/forms';
+import {Observable, Subscription, BehaviorSubject} from 'rxjs';
+import {UserService} from '../../services/user/user-service';
+import {Auth} from '../../services/auth/auth';
+import {SocketService} from '../../services/sokcets/socket-service';
+import {MessageService} from '../../services/messages/message-service';
+import {MessageDto} from '../../types/messageDto';
 import {MessageNotification} from '../../types/message_notification';
 
 @Component({
@@ -34,6 +34,7 @@ export class Dashboard implements OnInit, OnDestroy {
   typingTimeout: any;
 
   notifications: MessageNotification[] = [];
+  unreadCounts = new Map<string, number>();
 
   constructor(
     private readonly userService: UserService,
@@ -42,7 +43,8 @@ export class Dashboard implements OnInit, OnDestroy {
     private readonly messageService: MessageService,
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone
-  ) {}
+  ) {
+  }
 
   ngOnInit() {
     this.users$ = this.userService.getAllUsersExceptMe();
@@ -77,14 +79,14 @@ export class Dashboard implements OnInit, OnDestroy {
         if (!evt) return;
         this.zone.run(() => {
           const updated = this.messagesSubject.value.map(m =>
-            m._id === evt._id ? { ...m, read: true, readAt: evt.readAt } : m
+            m._id === evt._id ? {...m, read: true, readAt: evt.readAt} : m
           );
           this.messagesSubject.next(updated);
         });
       });
 
       /** Typing indicator */
-      this.socketService.onTyping().subscribe(({ fromUserId }) => {
+      this.socketService.onTyping().subscribe(({fromUserId}) => {
         this.zone.run(() => {
           const selected = this.selectedUserSubject.value;
           if (selected && selected.id === fromUserId) {
@@ -102,7 +104,7 @@ export class Dashboard implements OnInit, OnDestroy {
         });
       });
 
-      this.socketService.onStopTyping().subscribe(({ fromUserId }) => {
+      this.socketService.onStopTyping().subscribe(({fromUserId}) => {
         this.zone.run(() => {
           const selected = this.selectedUserSubject.value;
           if (selected && selected.id === fromUserId) {
@@ -126,6 +128,21 @@ export class Dashboard implements OnInit, OnDestroy {
           }
         })
       });
+
+      /** Load initial unread counts*/
+      this.messageService.getUnreadCounts().subscribe(data => {
+        console.log("dashboard unreadCount",data);
+        data.forEach(item => this.unreadCounts.set(item.senderId, item.count));
+      });
+
+      /** Listen for real-time updates */
+      this.socketService.unreadCounts$.subscribe(map => {
+        console.log("dashboard unreadCount$ subscribe",map);
+        this.unreadCounts = map;
+        this.cdr.markForCheck();
+      });
+
+
     });
   }
 
@@ -138,7 +155,7 @@ export class Dashboard implements OnInit, OnDestroy {
       this.zone.run(() => {
         this.messagesSubject.next(messages);
 
-        if(this.notifications.some(n => n.senderId === user.id)){
+        if (this.notifications.some(n => n.senderId === user.id)) {
           this.notifications = this.notifications.filter(n => n.senderId !== user.id);
         }
 
@@ -150,7 +167,7 @@ export class Dashboard implements OnInit, OnDestroy {
         if (unreadIds.length) {
           this.socketService.markMessagesAsRead(unreadIds);
           const readMessages = messages.map(m =>
-            unreadIds.includes(m._id) ? { ...m, read: true, readAt: new Date() } : m
+            unreadIds.includes(m._id) ? {...m, read: true, readAt: new Date()} : m
           );
           this.messagesSubject.next(readMessages);
         }
