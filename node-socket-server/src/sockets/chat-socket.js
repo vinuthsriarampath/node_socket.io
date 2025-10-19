@@ -54,8 +54,18 @@ export default function ChatSocket(io) {
                 // Save message in DB
                 const newMessage = await messageService.saveMessage(userId, toUserId, message);
 
-                // Emit to receiver if online
-                io.to(toUserId.toString()).emit("receive_message", newMessage);
+                // deliver message if receiver online
+                const receiverSocket = onlineUsers.get(toUserId);
+                if (receiverSocket) {
+                    io.to(toUserId.toString()).emit("receive_message", newMessage);
+
+                    // 🔔 Send notification only if the user isn't chatting with the sender
+                    io.to(toUserId.toString()).emit('notification', {
+                        senderId: userId,
+                        message: message.slice(0, 30),
+                        createdAt: newMessage.createdAt,
+                    });
+                }
 
                 // Emit confirmation to sender
                 socket.emit("message_sent", newMessage);
