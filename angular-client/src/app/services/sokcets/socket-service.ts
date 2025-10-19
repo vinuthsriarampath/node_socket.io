@@ -4,6 +4,7 @@ import {BehaviorSubject, Observable} from 'rxjs';
 import {Auth} from '../auth/auth';
 import {UserService} from '../user/user-service';
 import {MessageDto} from '../../types/messageDto';
+import {MessageNotification} from '../../types/message_notification';
 
 @Injectable({
   providedIn: 'root'
@@ -16,6 +17,9 @@ export class SocketService {
 
   private readonly messageReadSubject = new BehaviorSubject<MessageDto | null>(null);
   messageRead$ = this.messageReadSubject.asObservable();
+
+  private readonly notificationSubject = new BehaviorSubject<MessageNotification | null>(null);
+  notification$ = this.notificationSubject.asObservable();
 
   constructor(
     private readonly auth: Auth,
@@ -64,6 +68,10 @@ export class SocketService {
     // listen for message_read notifications
     this.socket.on('message_read', (payload: MessageDto) => {
       this.messageReadSubject.next(payload);
+    });
+
+    this.socket.on('notification', (payload) => {
+      this.notificationSubject.next(payload);
     });
 
     this.socket.on('connect_error', (err: any) => {

@@ -12,7 +12,10 @@
           [class.bg-gray-700]="(selectedUser$ | async)?.id === user.id"
         >
           <div>
-            <div class="font-medium">{{ user.firstName }} {{ user.lastName }}</div>
+            <div class="flex justify-between gap-2">
+              <p class="font-medium">{{ user.firstName }} {{ user.lastName }}</p>
+              <div *ngIf="hasNotificationFrom(user.id)" class=" bg-yellow-500 text-white text-xs rounded-full h-2 w-2"></div>
+            </div>
             <div class="text-xs text-gray-400">{{ user.email }}</div>
           </div>
 
@@ -20,11 +23,12 @@
           <!-- Online/offline indicator -->
           <ng-container *ngIf="(socketService.onlineUsers$ | async) as onlineUsers">
             <div
-              class=" text-xs px-2 w-fit rounded-full"
+              class=" text-xs px-2 w-fit rounded-full mt-2"
               [ngClass]="onlineUsers.has(user.id) ? 'bg-green-500' : 'bg-gray-500'"
               title="{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}"
             >{{ onlineUsers.has(user.id) ? 'Online' : 'Offline' }}</div>
           </ng-container>
+
         </li>
       </ul>
     </div>

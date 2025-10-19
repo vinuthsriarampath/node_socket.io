@@ -7,6 +7,7 @@ import { Auth } from '../../services/auth/auth';
 import { SocketService } from '../../services/sokcets/socket-service';
 import { MessageService } from '../../services/messages/message-service';
 import { MessageDto } from '../../types/messageDto';
+import {MessageNotification} from '../../types/message_notification';
 
 @Component({
   selector: 'app-dashboard',
@@ -31,6 +32,8 @@ export class Dashboard implements OnInit, OnDestroy {
   isTyping = false;
   typingUserId: string | null = null;
   typingTimeout: any;
+
+  notifications: MessageNotification[] = [];
 
   constructor(
     private readonly userService: UserService,
@@ -108,6 +111,21 @@ export class Dashboard implements OnInit, OnDestroy {
           }
         });
       });
+
+      this.socketService.notification$.subscribe((notif) => {
+        this.zone.run(() => {
+          if (notif) {
+            const selected = this.selectedUserSubject.value;
+            // only show if the current chat isn't the sender
+            if (!selected || selected.id !== notif.senderId) {
+              this.notifications.push(notif);
+              this.cdr.markForCheck();
+
+              this.showToast(`${notif.message}...`);
+            }
+          }
+        })
+      });
     });
   }
 
@@ -119,6 +137,10 @@ export class Dashboard implements OnInit, OnDestroy {
     this.messageService.getAllMessagesBySenderIdAndReceiverId(user.id).subscribe(messages => {
       this.zone.run(() => {
         this.messagesSubject.next(messages);
+
+        if(this.notifications.some(n => n.senderId === user.id)){
+          this.notifications = this.notifications.filter(n => n.senderId !== user.id);
+        }
 
         const unreadIds = messages
           .filter(m => m.receiverId === this.currentUserId && !m.read)
@@ -153,6 +175,19 @@ export class Dashboard implements OnInit, OnDestroy {
     if (!this.messageText.trim() || !selectedUser) return;
     this.socketService.sendMessage(selectedUser.id, this.messageText);
     this.messageText = '';
+  }
+
+  showToast(msg: string) {
+    const toast = document.createElement('div');
+    toast.innerText = msg;
+    toast.className =
+      'fixed bottom-5 right-5 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  hasNotificationFrom(userId: string | number): boolean {
+    return Array.isArray(this.notifications) && this.notifications.some(n => n.senderId === userId);
   }
 
   ngOnDestroy() {
