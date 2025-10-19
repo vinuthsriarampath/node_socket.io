@@ -79,7 +79,6 @@ export class SocketService {
 
     /** Unread Message Count */
     this.socket.on('unread_update', (data: any[]) => {
-      console.log("unread message update received",data);
       const map = new Map<string, number>();
       data.forEach(item => map.set(item.senderId, item.count));
       this.unreadCountsSubject.next(map);

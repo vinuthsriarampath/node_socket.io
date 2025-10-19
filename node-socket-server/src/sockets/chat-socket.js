@@ -101,7 +101,6 @@ export default function ChatSocket(io) {
                 if(senderId){
                     // send the newest unread message count to the user after update
                     const unreadCount = await messageService.countUnreadMessagesByUser(userId);
-                    console.log("unreadCount from socket service:", unreadCount);
                     socket.emit("unread_update", unreadCount);
                 }
             } catch (err) {

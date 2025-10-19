@@ -131,13 +131,11 @@ export class Dashboard implements OnInit, OnDestroy {
 
       /** Load initial unread counts*/
       this.messageService.getUnreadCounts().subscribe(data => {
-        console.log("dashboard unreadCount",data);
         data.forEach(item => this.unreadCounts.set(item.senderId, item.count));
       });
 
       /** Listen for real-time updates */
       this.socketService.unreadCounts$.subscribe(map => {
-        console.log("dashboard unreadCount$ subscribe",map);
         this.unreadCounts = map;
         this.cdr.markForCheck();
       });
