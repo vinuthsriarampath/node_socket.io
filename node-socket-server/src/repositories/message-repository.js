@@ -1,4 +1,5 @@
 import {Message} from "../models/message-model.js";
+import mongoose from "mongoose";
 
 export const createMessage =  (messageData) => {
     const message = new Message(messageData);
@@ -25,4 +26,11 @@ export const getMessagesByIds = (messageIds) => {
     return Message.find(
         { _id: { $in: messageIds } }
     );
+}
+
+export const countUnreadMessagesByUser = (userId) => {
+    return Message.aggregate([
+        { $match: { receiverId:new mongoose.Types.ObjectId(userId), read: false } },
+        { $group: { _id: "$senderId", count: { $sum: 1 } } },
+    ])
 }

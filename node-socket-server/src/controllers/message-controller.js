@@ -9,3 +9,13 @@ export const getAllMessagesBetweenReceiver = async (req,res,next)=> {
         return next(err)
     }
 }
+
+export const getCountOfUnreadMessagesByUser = async (req,res,next) => {
+    try {
+        const counts = await messageService.countUnreadMessagesByUser(req.userId);
+        console.log(counts);
+        return res.json(counts);
+    }catch (e) {
+        return next(e);
+    }
+}

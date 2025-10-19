@@ -24,3 +24,12 @@ export const getMessagesByMessageIdList = async (messageIds) => {
     }
     return messages;
 }
+
+export const countUnreadMessagesByUser = async (userId) => {
+    const counts = await messageRepo.countUnreadMessagesByUser(userId);
+
+    return counts.map(c => ({
+        senderId: c._id.toString(),
+        count: c.count,
+    }))
+}

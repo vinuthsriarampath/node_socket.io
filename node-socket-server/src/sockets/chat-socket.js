@@ -65,6 +65,10 @@ export default function ChatSocket(io) {
                         message: message.slice(0, 30),
                         createdAt: newMessage.createdAt,
                     });
+
+                    // send the newest unread message count to the user after update
+                    const unreadCount = await messageService.countUnreadMessagesByUser(toUserId);
+                    io.to(toUserId).emit("unread_update", unreadCount);
                 }
 
                 // Emit confirmation to sender
@@ -84,13 +88,22 @@ export default function ChatSocket(io) {
 
                 // Notify sender(s)
                 const updatedMessages = await messageService.getMessagesByMessageIdList(messageIds);
+                let senderId = null;
                 updatedMessages.forEach((msg) => {
+                    senderId = msg.senderId.toString();
                     io.to(msg.senderId.toString()).emit("message_read", {
                         _id: msg._id,
                         read: msg.read,
                         readAt: msg.readAt,
                     });
                 });
+
+                if(senderId){
+                    // send the newest unread message count to the user after update
+                    const unreadCount = await messageService.countUnreadMessagesByUser(userId);
+                    console.log("unreadCount from socket service:", unreadCount);
+                    socket.emit("unread_update", unreadCount);
+                }
             } catch (err) {
                 console.error("Error marking messages as read:", err);
             }
