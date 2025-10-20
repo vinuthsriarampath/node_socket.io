@@ -8,6 +8,7 @@ import {SocketService} from '../../services/sokcets/socket-service';
 import {MessageService} from '../../services/messages/message-service';
 import {MessageDto} from '../../types/messageDto';
 import {MessageNotification} from '../../types/message_notification';
+import {FileService} from '../../services/file/file-service';
 
 @Component({
   selector: 'app-dashboard',
@@ -41,6 +42,7 @@ export class Dashboard implements OnInit, OnDestroy {
     private readonly authService: Auth,
     protected readonly socketService: SocketService,
     private readonly messageService: MessageService,
+    private readonly fileService: FileService,
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone
   ) {
@@ -184,6 +186,38 @@ export class Dashboard implements OnInit, OnDestroy {
       }, 1500);
     }
   }
+
+  onFileSelected(event: any) {
+    const input = event.target as HTMLInputElement;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    this.fileService.uploadFile(formData).subscribe(res => {
+      let fileType = 'file';
+      if (file?.type) {
+        if (file.type.startsWith('image/')) {
+          fileType = 'image';
+        } else if (file.type.startsWith('video/')) {
+          fileType = 'video';
+        }
+      }
+
+      const messageData = {
+        senderId: this.currentUserId || "",
+        receiverId: this.selectedUserSubject.value?.id || "",
+        fileUrl: res.fileUrl,
+        type: fileType
+      };
+
+      this.socketService.sendFileMessage(messageData);
+      // clear the file input after a successful upload
+      input.value = "";
+    });
+  }
+
 
   sendMessage() {
     const selectedUser = this.selectedUserSubject.value;

@@ -122,6 +122,10 @@ export class SocketService {
     });
   }
 
+  sendFileMessage(data: {senderId:string, receiverId:string, fileUrl:string, type:string}){
+    this.socket.emit('send_file_message', data)
+  }
+
   //notify the recipient user that the sender is typing
   sendTyping(toUserId: string) {
     this.socket.emit("typing", { toUserId });
