@@ -8,6 +8,7 @@ const messageSchema = new mongoose.Schema(
         status: { type: String, enum: ["sent", "delivered", "seen"], default: "sent" },
         read: { type: Boolean, default: false },
         readAt: { type: Date, default: Date.now },
+        type: { type: String, enum: ["text", "image", "video", "file"], default: "text" },
     },
     { timestamps: true }
 );

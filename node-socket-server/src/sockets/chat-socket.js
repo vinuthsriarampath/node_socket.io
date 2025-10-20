@@ -80,6 +80,33 @@ export default function ChatSocket(io) {
             }
         });
 
+        socket.on("send_file_message", async (data) => {
+            const { senderId, receiverId, fileUrl, type } = data
+
+            // Save message in DB
+            const newMessage = await messageService.saveFileMessage(senderId, receiverId, fileUrl , type);
+
+            // deliver message if receiver online
+            const receiverSocket = onlineUsers.get(receiverId);
+            if (receiverSocket) {
+                io.to(receiverId.toString()).emit("receive_message", newMessage);
+
+                // 🔔 Send notification only if the user isn't chatting with the sender
+                io.to(receiverId.toString()).emit('notification', {
+                    senderId: userId,
+                    message: type,
+                    createdAt: newMessage.createdAt,
+                });
+
+                // send the newest unread message count to the user after update
+                const unreadCount = await messageService.countUnreadMessagesByUser(receiverId);
+                io.to(receiverId).emit("unread_update", unreadCount);
+            }
+
+            io.to(receiverId.toString()).emit("receive_message", newMessage);
+            socket.emit("message_sent", newMessage);
+        });
+
         socket.on("mark_as_read", async ({ messageIds }) => {
             try {
                 if (!Array.isArray(messageIds) || messageIds.length === 0) return;

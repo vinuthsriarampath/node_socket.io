@@ -31,6 +31,14 @@ app.use(helmet({
 
 app.use(passport.initialize());
 
+app.use('/uploads', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', process.env.FRONTEND_URL);
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL);
+    next();
+});
+
+app.use("/uploads",express.static("uploads"));
+
 app.use('/api', indexRoute);
 
 app.use((_req, res) => {

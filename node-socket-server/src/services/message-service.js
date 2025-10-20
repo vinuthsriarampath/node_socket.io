@@ -13,6 +13,11 @@ export const saveMessage = async (senderId, receiverId, message) => {
     return messageRepo.createMessage(messageData);
 }
 
+export const saveFileMessage = async (senderId, receiverId, message, type) => {
+    const messageData =  {senderId, receiverId, message, type};
+    return messageRepo.createMessage(messageData);
+}
+
 export const markMessagesAsReadByUser = async (messageIds, userId) => {
     await messageRepo.markManyMessagesByUserAsRead(messageIds, userId);
 }
