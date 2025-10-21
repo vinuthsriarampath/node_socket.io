@@ -17,7 +17,7 @@
               <!--              <div *ngIf="hasNotificationFrom(user.id)" class=" bg-yellow-500 text-white text-xs rounded-full h-2 w-2"></div> // Notification batch-->
               <!-- 📨 Unread message count -->
               <div *ngIf="unreadCounts.get(user.id) && unreadCounts.get(user.id)! > 0"
-                   class="bg-red-600 text-xs max-w-fit rounded-full px-2 py-0.5">
+                   class="bg-red-600 text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {{ unreadCounts.get(user.id) }}
               </div>
             </div>
