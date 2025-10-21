@@ -6,13 +6,19 @@ export const createMessage =  (messageData) => {
     return message.save();
 }
 
-export const getAllMessagesBySenderIdAndReceiverId = (senderId, receiverId) => {
-    return Message.find({
+export const getAllMessagesBySenderIdAndReceiverId = (currentUserId, receiverId, before, limit) => {
+    const query = {
         $or: [
-            {senderId: senderId, receiverId},
-            {senderId: receiverId, receiverId: senderId},
-        ],
-    }).sort({createdAt: 1});
+            { senderId: currentUserId, receiverId: receiverId },
+            { senderId: receiverId, receiverId: currentUserId }
+        ]
+    };
+
+    if (before) query.createdAt = { $lt: new Date(before) };
+
+    return Message.find(query)
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit));
 }
 
 export const markManyMessagesByUserAsRead =async (messageIds,userId) => {

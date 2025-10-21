@@ -1,11 +1,8 @@
 import * as messageRepo from '../repositories/message-repository.js';
 
-export const getAllMessagesBySenderIdAndReceiverId = async (senderId, receiverId) => {
-    const messages = await messageRepo.getAllMessagesBySenderIdAndReceiverId(senderId, receiverId);
-    if(!messages){
-        return [];
-    }
-    return messages;
+export const getAllMessagesBySenderIdAndReceiverId = async (currentUserId, receiverId, before, limit = 20) => {
+    const messages = await messageRepo.getAllMessagesBySenderIdAndReceiverId(currentUserId, receiverId, before, limit);
+    return messages.reverse();
 }
 
 export const saveMessage = async (senderId, receiverId, message) => {
