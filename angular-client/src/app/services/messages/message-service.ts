@@ -10,8 +10,12 @@ export class MessageService {
   private readonly apiUrl:string = 'http://localhost:8080/api/messages'
   constructor(private readonly http:HttpClient) {}
 
-  getAllMessagesBySenderIdAndReceiverId(receiverId:string): Observable<MessageDto[]>{
-    return this.http.get<MessageDto[]>(`${this.apiUrl}/${receiverId}`);
+  getAllMessagesBySenderIdAndReceiverId(userId: string, before?: string): Observable<MessageDto[]>{
+    const params: any = {};
+    if (before) params.before = before;
+    params.limit = 20;
+
+    return this.http.get<MessageDto[]>(`${this.apiUrl}/${userId}`, { params })
   }
 
   getUnreadCounts(): Observable<{senderId: string; count: number}[]>{

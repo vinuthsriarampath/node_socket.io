@@ -37,6 +37,8 @@ export class Dashboard implements OnInit, OnDestroy {
   notifications: MessageNotification[] = [];
   unreadCounts = new Map<string, number>();
 
+  loadingOlder = false;
+
   constructor(
     private readonly userService: UserService,
     private readonly authService: Auth,
@@ -73,6 +75,7 @@ export class Dashboard implements OnInit, OnDestroy {
               this.socketService.markMessagesAsRead(unreadIds);
             }
           }
+          setTimeout(() => this.scrollToBottom(), 0);
         });
       });
 
@@ -174,8 +177,45 @@ export class Dashboard implements OnInit, OnDestroy {
           );
           this.messagesSubject.next(readMessages);
         }
+        setTimeout(() => this.scrollToBottom(), 0);
       });
     });
+  }
+
+  loadOlderMessages() {
+    if (this.loadingOlder) return;
+    const container = document.getElementById('chat-container');
+    if (!container) return;
+
+    const prevScrollHeight = container.scrollHeight;
+    const oldest = this.messagesSubject.value[0]?.createdAt;
+    if (!oldest) return;
+
+    this.loadingOlder = true;
+    this.messageService
+      .getAllMessagesBySenderIdAndReceiverId(this.selectedUserSubject.value.id, oldest.toString())
+      .subscribe(msgs => {
+        // prepend new messages
+        this.messagesSubject.next([...msgs, ...this.messagesSubject.value]);
+        this.loadingOlder = false;
+
+        // restore scroll position
+        setTimeout(() => {
+          const newScrollHeight = container.scrollHeight;
+          container.scrollTop = newScrollHeight - prevScrollHeight;
+        });
+      });
+  }
+
+
+  scrollToBottom() {
+    const container = document.getElementById('chat-container');
+    if (container) container.scrollTop = container.scrollHeight;
+  }
+
+  onScroll(event: any) {
+    const element = event.target;
+    if (element.scrollTop === 0) this.loadOlderMessages();
   }
 
   onMessageInput() {
