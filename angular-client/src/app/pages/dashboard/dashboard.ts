@@ -9,6 +9,10 @@ import {MessageService} from '../../services/messages/message-service';
 import {MessageDto} from '../../types/messageDto';
 import {MessageNotification} from '../../types/message_notification';
 import {FileService} from '../../services/file/file-service';
+import {GroupService} from '../../services/group/group-service';
+import {GroupDto} from '../../types/groupDto';
+import {GroupMessageService} from '../../services/group-messages/group-message-service';
+import {GroupMessageDto} from '../../types/groupMessageDto';
 
 @Component({
   selector: 'app-dashboard',
@@ -24,11 +28,18 @@ export class Dashboard implements OnInit, OnDestroy {
   private readonly selectedUserSubject = new BehaviorSubject<any | null>(null);
   selectedUser$ = this.selectedUserSubject.asObservable();
 
+  private readonly selectedGroupSubject = new BehaviorSubject<GroupDto | null>(null);
+  selectedGroup$ = this.selectedGroupSubject.asObservable();
+
   private readonly messagesSubject = new BehaviorSubject<MessageDto[]>([]);
   messages$ = this.messagesSubject.asObservable();
 
+  private readonly groupMessageSubject = new BehaviorSubject<GroupMessageDto[]>([]);
+  groupMessage$ = this.groupMessageSubject.asObservable();
+
   messageText = '';
   private messageSub!: Subscription;
+  private groupMessageSub!: Subscription;
 
   isTyping = false;
   typingUserId: string | null = null;
@@ -38,6 +49,11 @@ export class Dashboard implements OnInit, OnDestroy {
   unreadCounts = new Map<string, number>();
 
   loadingOlder = false;
+
+  groups: GroupDto[] = [];
+  showGroupModal = false;
+  newGroupName = '';
+  selectedMembers = new Set<string>();
 
   showVideoPopup = false;
   activeVideoSrc: string | null = null;
@@ -50,6 +66,8 @@ export class Dashboard implements OnInit, OnDestroy {
     private readonly authService: Auth,
     protected readonly socketService: SocketService,
     private readonly messageService: MessageService,
+    private readonly groupService: GroupService,
+    private readonly groupMessageService: GroupMessageService,
     private readonly fileService: FileService,
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone
@@ -189,7 +207,19 @@ export class Dashboard implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       });
 
+      /** Load All groups related to the current user */
+      this.groupService.getAllGroupsRelatedToUser().subscribe(groups => {
+        this.groups = groups;
+        this.cdr.markForCheck();
+      })
 
+      /** Listen for new groups*/
+      this.socketService.onReceiveNewGroup().subscribe(group => {
+        this.zone.run(() => {
+          this.groups.push(group);
+          this.cdr.markForCheck();
+        })
+      })
     });
   }
 
@@ -197,20 +227,25 @@ export class Dashboard implements OnInit, OnDestroy {
     this.isTyping = false;
     this.typingUserId = null;
     this.selectedUserSubject.next(user);
-
+    this.selectedGroupSubject.next(null); // Ensure group is cleared
     this.messageService.getAllMessagesBySenderIdAndReceiverId(user.id).subscribe(messages => {
       this.zone.run(() => {
+        this.pendingMedia = 0;
+        messages.forEach(msg => {
+          msg._imgError = false;
+          msg._videoError = false;
+          if (msg.type === 'image' || msg.type === 'video') { // Videos load metadata in user chats
+            this.pendingMedia++;
+          }
+        });
         this.messagesSubject.next(messages);
-
         if (this.notifications.some(n => n.senderId === user.id)) {
           this.notifications = this.notifications.filter(n => n.senderId !== user.id);
         }
-
         const unreadIds = messages
           .filter(m => m.receiverId === this.currentUserId && !m.read)
           .map(m => m._id)
           .filter(Boolean);
-
         if (unreadIds.length) {
           this.socketService.markMessagesAsRead(unreadIds);
           const readMessages = messages.map(m =>
@@ -218,7 +253,40 @@ export class Dashboard implements OnInit, OnDestroy {
           );
           this.messagesSubject.next(readMessages);
         }
-        setTimeout(() => this.scrollToBottom(), 0);
+        setTimeout(() => {
+          if (this.pendingMedia === 0) {
+            this.scrollToBottom();
+          }
+          // else: mediaLoaded() will handle scrolling when done
+        }, 0);
+      });
+    });
+  }
+
+  selectGroup(group: GroupDto) {
+    this.isTyping = false;
+    this.typingUserId = null;
+    this.selectedUserSubject.next(null);
+    this.selectedGroupSubject.next(group);
+    this.groupMessageService.getAllMessagesByGroupId(group._id).subscribe(messages => {
+      this.zone.run(() => {
+        this.pendingMedia = 0;
+        messages.forEach(msg => {
+          msg._imgError = false;
+          msg._videoError = false;
+          msg._videoLoaded = false; // Explicitly set
+          if (msg.type === 'image' || msg.type === 'video') {
+            this.pendingMedia++;
+          }
+        });
+        this.groupMessageSubject.next(messages);
+        setTimeout(() => {
+          if (this.pendingMedia === 0) {
+            this.scrollToBottom();
+          }
+          // else: mediaLoaded() will handle scrolling when done
+        }, 0);
+        this.cdr.markForCheck();
       });
     });
   }
@@ -226,26 +294,55 @@ export class Dashboard implements OnInit, OnDestroy {
   loadOlderMessages() {
     if (this.loadingOlder) return;
     const container = document.getElementById('chat-container');
-    if (!container) return;
-
+    if (!container) return; // save previous height to restore scroll position after prepending
     const prevScrollHeight = container.scrollHeight;
-    const oldest = this.messagesSubject.value[0]?.createdAt;
-    if (!oldest) return;
-
+    const isUserChat = !!this.selectedUserSubject.value?.id;
+    const isGroupChat = !!this.selectedGroupSubject.value?._id;
+    if (!isUserChat && !isGroupChat) return;
     this.loadingOlder = true;
-    this.messageService
-      .getAllMessagesBySenderIdAndReceiverId(this.selectedUserSubject.value.id, oldest.toString())
-      .subscribe(msgs => {
-        // prepend new messages
-        this.messagesSubject.next([...msgs, ...this.messagesSubject.value]);
+    if (isUserChat) {
+      const oldest = this.messagesSubject.value[0]?.createdAt;
+      if (!oldest) {
         this.loadingOlder = false;
-
-        // restore scroll position
-        setTimeout(() => {
-          const newScrollHeight = container.scrollHeight;
-          container.scrollTop = newScrollHeight - prevScrollHeight;
+        console.log('No older user messages to load');
+        return;
+      }
+      this.messageService
+        .getAllMessagesBySenderIdAndReceiverId(this.selectedUserSubject.value.id, oldest.toString())
+        .subscribe(msgs => {
+          // prepend older messages
+          this.messagesSubject.next([...msgs, ...this.messagesSubject.value]);
+          this.loadingOlder = false; // restore scroll position so view doesn't jump
+          setTimeout(() => {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+            }, 0);
+          }, err => {
+            console.error('Failed to load older user messages', err);
+            this.loadingOlder = false;
         });
-      });
+    } else if (isGroupChat) {
+      const oldestGroup = this.groupMessageSubject.value[0]?.createdAt;
+      if (!oldestGroup) {
+        this.loadingOlder = false;
+        console.log('No older group messages to load');
+        return;
+      }
+      this.groupMessageService
+        .getAllMessagesByGroupId(this.selectedGroupSubject.value._id, oldestGroup.toString())
+        .subscribe(msgs => {
+          // prepend older messages
+          this.groupMessageSubject.next([...msgs, ...this.groupMessageSubject.value]);
+          this.loadingOlder = false;// restore scroll position so view doesn't jump
+          setTimeout(() => {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - prevScrollHeight;
+            }, 0);
+          }, err => {
+            console.error('Failed to load older group messages', err);
+            this.loadingOlder = false;
+        });
+    }
   }
 
 
@@ -311,12 +408,33 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       }
 
-      const messageData = {
-        senderId: this.currentUserId || "",
-        receiverId: this.selectedUserSubject.value?.id || "",
-        fileUrl: res.fileUrl,
-        type: fileType
+      let messageData: {
+        senderId: string;
+        receiverId?: string;
+        fileUrl: string;
+        type: string;
+        groupId?: string;
+      } = {
+        senderId: this.currentUserId || '',
+        fileUrl: '',
+        type: ''
       };
+
+      if (this.selectedUserSubject.value?.id) {
+        messageData = {
+          senderId: this.currentUserId || '',
+          receiverId: this.selectedUserSubject.value.id || '',
+          fileUrl: res.fileUrl,
+          type: fileType
+        };
+      } else if (this.selectedGroupSubject.value) {
+        messageData = {
+          senderId: this.currentUserId || '',
+          fileUrl: res.fileUrl,
+          type: fileType,
+          groupId: this.selectedGroupSubject.value._id || ''
+        };
+      }
 
       this.socketService.sendFileMessage(messageData);
       // clear the file input after a successful upload
@@ -332,6 +450,13 @@ export class Dashboard implements OnInit, OnDestroy {
     this.messageText = '';
   }
 
+  sendGroupMessage() {
+    const selectedGroup = this.selectedGroupSubject.value;
+    if (!this.messageText.trim() || !selectedGroup) return
+    this.socketService.sendGroupMessage(selectedGroup._id, this.messageText);
+    this.messageText = '';
+  }
+
   showToast(msg: string) {
     const toast = document.createElement('div');
     toast.innerText = msg;
@@ -343,6 +468,40 @@ export class Dashboard implements OnInit, OnDestroy {
 
   hasNotificationFrom(userId: string | number): boolean {
     return Array.isArray(this.notifications) && this.notifications.some(n => n.senderId === userId);
+  }
+
+  openGroupDialog() {
+    this.showGroupModal = true;
+    this.newGroupName = '';
+    this.selectedMembers.clear();
+  }
+
+  closeGroupDialog() {
+    this.showGroupModal = false;
+    this.newGroupName = '';
+    this.selectedMembers.clear();
+    this.cdr.markForCheck();
+  }
+
+  toggleMemberSelection(userId: string) {
+    if (this.selectedMembers.has(userId)) {
+      this.selectedMembers.delete(userId);
+    } else {
+      this.selectedMembers.add(userId);
+    }
+  }
+
+  createGroup() {
+    if (!this.newGroupName.trim() || this.selectedMembers.size === 0) {
+      alert('Please provide a name and select members.');
+      return;
+    }
+
+    const memberIds: string[] = Array.from(this.selectedMembers);
+    this.groupService.createGroup(this.newGroupName, memberIds).subscribe(group => {
+      this.socketService.onGroupCreate(group._id)
+      this.closeGroupDialog();
+    });
   }
 
   openVideoPopup(src: string) {
@@ -365,6 +524,7 @@ export class Dashboard implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.messageSub) this.messageSub.unsubscribe();
+    if (this.groupMessageSub) this.groupMessageSub.unsubscribe();
     this.socketService.disconnect();
   }
 }

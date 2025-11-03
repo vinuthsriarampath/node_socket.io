@@ -5,6 +5,8 @@ import {Auth} from '../auth/auth';
 import {UserService} from '../user/user-service';
 import {MessageDto} from '../../types/messageDto';
 import {MessageNotification} from '../../types/message_notification';
+import {GroupMessageDto} from '../../types/groupMessageDto';
+import {GroupDto} from '../../types/groupDto';
 
 @Injectable({
   providedIn: 'root'
@@ -122,7 +124,27 @@ export class SocketService {
     });
   }
 
-  sendFileMessage(data: {senderId:string, receiverId:string, fileUrl:string, type:string}){
+  sendGroupMessage(groupId: string, message: string) {
+    this.socket.emit("group_message", { groupId, message });
+  }
+
+  onGroupMessage(): Observable<GroupMessageDto> {
+    return new Observable(observer => {
+      this.socket.on("receive_group_message", data => observer.next(data));
+    });
+  }
+
+  onGroupCreate(groupId:string){
+    this.socket.emit('on_group_create', {groupId});
+  }
+
+  onReceiveNewGroup(): Observable<GroupDto>{
+    return new Observable(observer => {
+      this.socket.on('receive_new_group', data => observer.next(data));
+    })
+  }
+
+  sendFileMessage(data: {senderId:string, receiverId?:string, fileUrl:string, type:string, groupId?:string}){
     this.socket.emit('send_file_message', data)
   }
 
