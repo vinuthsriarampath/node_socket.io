@@ -1,5 +1,7 @@
 import { verifyToken } from "../utils/jwt.js";
 import * as messageService from "../services/message-service.js";
+import * as groupService from "../services/group-service.js";
+import * as groupMessageService from "../services/group-message-service.js";
 
 const onlineUsers = new Map();
 
@@ -80,30 +82,77 @@ export default function ChatSocket(io) {
             }
         });
 
-        socket.on("send_file_message", async (data) => {
-            const { senderId, receiverId, fileUrl, type } = data
+        socket.on("group_message", async ({ groupId, message }) => {
+            try {
+                const newMessage = await groupMessageService.saveMessage(userId, message, groupId);
 
-            // Save message in DB
-            const newMessage = await messageService.saveFileMessage(senderId, receiverId, fileUrl , type);
+                // Emit to all group members
+                const group = await groupService.getGroupById(groupId);
+                group.members.forEach((memberId) => {
+                    const receiverSocket = onlineUsers.get(memberId.toString());
+                    if (receiverSocket){
+                        io.to(memberId.toString()).emit("receive_group_message", newMessage);
 
-            // deliver message if receiver online
-            const receiverSocket = onlineUsers.get(receiverId);
-            if (receiverSocket) {
-                io.to(receiverId.toString()).emit("receive_message", newMessage);
-
-                // 🔔 Send notification only if the user isn't chatting with the sender
-                io.to(receiverId.toString()).emit('notification', {
-                    senderId: userId,
-                    message: type,
-                    createdAt: newMessage.createdAt,
+                        if(memberId.toString() !== userId){
+                            io.to(memberId.toString()).emit('notification', {
+                                senderId: userId,
+                                message: message.slice(0, 30),
+                                createdAt: newMessage.createdAt,
+                            });
+                        }
+                    }
                 });
+            } catch (err) {
+                console.error("Group message error:", err);
+            }
+        });
 
-                // send the newest unread message count to the user after update
-                const unreadCount = await messageService.countUnreadMessagesByUser(receiverId);
-                io.to(receiverId).emit("unread_update", unreadCount);
+        socket.on("send_file_message", async (data) => {
+            const { senderId, receiverId, fileUrl, type, groupId } = data
+
+            let newMessage;
+
+            if(groupId){
+                console.log("groupId", groupId)
+                newMessage = await groupMessageService.saveFileMessage(senderId, groupId, fileUrl, type);
+
+                const group = await groupService.getGroupById(groupId);
+
+                group.members.forEach((memberId) => {
+                    const receiverSocket = onlineUsers.get(memberId.toString());
+                    if(receiverSocket){
+                        io.to(memberId.toString()).emit("receive_group_message", newMessage);
+
+                        io.to(memberId.toString()).emit('notification', {
+                            senderId: userId,
+                            message: type,
+                            createdAt: newMessage.createdAt,
+                        })
+                    }
+                });
+            }else{
+                // Save message in DB
+                newMessage = await messageService.saveFileMessage(senderId, receiverId, fileUrl , type);
+
+                // deliver message if receiver online
+                const receiverSocket = onlineUsers.get(receiverId);
+                if (receiverSocket) {
+                    io.to(receiverId.toString()).emit("receive_message", newMessage);
+
+                    // 🔔 Send notification only if the user isn't chatting with the sender
+                    io.to(receiverId.toString()).emit('notification', {
+                        senderId: userId,
+                        message: type,
+                        createdAt: newMessage.createdAt,
+                    });
+
+                    // send the newest unread message count to the user after update
+                    const unreadCount = await messageService.countUnreadMessagesByUser(receiverId);
+                    io.to(receiverId).emit("unread_update", unreadCount);
+                }
+                // io.to(receiverId.toString()).emit("receive_message", newMessage);
             }
 
-            io.to(receiverId.toString()).emit("receive_message", newMessage);
             socket.emit("message_sent", newMessage);
         });
 
@@ -134,6 +183,21 @@ export default function ChatSocket(io) {
                 console.error("Error marking messages as read:", err);
             }
         });
+
+        socket.on("on_group_create",async ({groupId})=>{
+            try {
+                console.log("on_group_create", groupId);
+                const group = await groupService.getGroupById(groupId);
+                group.members.forEach((memberId) => {
+                    const receiverSocket = onlineUsers.get(memberId.toString());
+                    if(receiverSocket){
+                        io.to(memberId.toString()).emit("receive_new_group", group);
+                    }
+                })
+            }catch (err){
+                console.error("Error on group create:", err);
+            }
+        })
 
         // Notify when the user starts typing
         socket.on("typing", ({ toUserId }) => {
