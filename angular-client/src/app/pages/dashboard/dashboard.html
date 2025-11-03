@@ -56,22 +56,21 @@
              class="flex items-end">
           <div
             [ngClass]="{
-      'bg-blue-600 text-white ml-auto': msg.senderId === currentUserId,
-      'bg-gray-700 text-gray-100 mr-auto': msg.senderId !== currentUserId
-    }"
+              'bg-blue-600 text-white ml-auto': msg.senderId === currentUserId,
+              'bg-gray-700 text-gray-100 mr-auto': msg.senderId !== currentUserId
+            }"
             class="inline-block px-4 py-2 rounded-2xl max-w-xs break-words relative"
           >
-<!--            text message-->
             <div *ngIf="msg.type === 'text'">{{ msg.message }}</div>
 
-<!--            message with image-->
             <div *ngIf="msg.type === 'image'">
               <ng-container *ngIf="!msg._imgError && msg.message">
                 <img
                   [src]="'http://localhost:8080' + msg.message"
                   alt="img send"
                   class="max-w-[200px] rounded"
-                  (error)="msg._imgError = true"
+                  (load)="mediaLoaded()"
+                  (error)="msg._imgError = true; mediaLoaded()"
                 />
               </ng-container>
 
@@ -82,46 +81,52 @@
 
             <div *ngIf="msg.type === 'video'">
               <ng-container *ngIf="!msg._videoError && msg.message">
-                <video
-                  [src]="'http://localhost:8080' + msg.message"
-                  controls
-                  class=" rounded"
-                  (error)="msg._videoError = true"
-                  [attr.aria-describedby]="'desc-' + msg._id"
-                >
-                  <track kind="subtitles" [src]="'http://localhost:8080' + msg.message + '.en.vtt'" srclang="en" label="English" default>
-                </video>
-                <div [id]="'desc-' + msg._id" class="sr-only" *ngIf="msg._videoDescription">{{ msg._videoDescription }}</div>
+                <div class="relative max-w-[280px] rounded-xl overflow-hidden bg-black/40">
+                  <!-- Thumbnail/Play -->
+                  <div
+                    class="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer transition hover:bg-black/60"
+                    (click)="openVideoPopup('http://localhost:8080' + msg.message)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" fill="white" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                  <video
+                    preload="metadata"
+                    class="w-full rounded-xl opacity-40 pointer-events-none"
+                    (loadedmetadata)="mediaLoaded()"
+                    (error)="msg._videoError = true; mediaLoaded()"
+                  >
+                    <source [src]="'http://localhost:8080' + msg.message" type="video/mp4" />
+                  </video>
+                </div>
               </ng-container>
-
               <div *ngIf="msg._videoError || !msg.message" class="text-xs text-red-400 p-2 bg-gray-800 rounded">
                 Video not available or cannot be played
               </div>
             </div>
-<!--            message with file-->
+
+
             <div *ngIf="msg.type === 'file'">
               <a [href]="`http://localhost:8080`+ msg.message" target="_blank">📄 Download File</a>
             </div>
 
             <!-- status ticks for messages sent by me -->
             <span *ngIf="msg.senderId === currentUserId" class="ml-2 inline-block align-text-bottom text-xs">
-              <ng-container *ngIf="!msg.read">
-                <!-- single tick (sent/delivered) -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-4 w-4" fill="none" viewBox="0 0 30 24"
-                     stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-              </ng-container>
-              <ng-container *ngIf="msg.read">
-                <!-- double tick (read) -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-4 w-4" fill="none" viewBox="0 0 32 24"
-                     stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" transform="translate(10,0)"/>
-                </svg>
-              </ng-container>
-            </span>
-
+          <ng-container *ngIf="!msg.read">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-4 w-4" fill="none" viewBox="0 0 30 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+          </ng-container>
+          <ng-container *ngIf="msg.read">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-4 w-4" fill="none" viewBox="0 0 32 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" transform="translate(10,0)"/>
+            </svg>
+          </ng-container>
+        </span>
 
           </div>
         </div>
@@ -141,7 +146,12 @@
       <div class="p-4 bg-gray-800 border-t border-gray-700 flex items-center gap-2">
         <input type="file" (change)="onFileSelected($event)" hidden #fileInput/>
         <button (click)="fileInput.click()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paperclip-icon lucide-paperclip"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="lucide lucide-paperclip-icon lucide-paperclip">
+            <path
+              d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>
+          </svg>
         </button>
         <input
           type="text"
@@ -159,6 +169,36 @@
         </button>
       </div>
     </ng-container>
+    <!-- 📺 Video Popup Modal -->
+    <div
+      *ngIf="showVideoPopup"
+      class="fixed inset-0 bg-black flex items-center justify-center z-[9999] p-4"
+      role="dialog"
+      aria-modal="true"
+      (click)="closeVideoPopup()"
+      (keydown.escape)="closeVideoPopup()"
+      tabindex="0"
+    >
+        <button
+          class="absolute top-3 right-3 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full flex items-center justify-center border border-white/10"
+          (click)="closeVideoPopup()"
+          aria-label="Close video"
+        >
+          ✕
+        </button>
+      <div
+        class="relative  w-full mx-auto rounded-xl overflow-hidden max-h-[90vh] bg-transparent"
+        (click)="$event.stopPropagation()"
+      >
+        <video
+          [src]="activeVideoSrc"
+          controls
+          autoplay
+          playsinline
+          class="w-full h-auto max-h-[80vh] rounded-xl shadow-2xl bg-zinc-900"
+        ></video>
+      </div>
+    </div>
 
     <ng-template #noChatSelected>
       <div class="p-4 border-b border-gray-700 bg-gray-800 text-lg font-semibold">

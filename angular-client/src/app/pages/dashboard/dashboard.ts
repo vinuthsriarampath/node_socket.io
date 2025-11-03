@@ -39,6 +39,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
   loadingOlder = false;
 
+  showVideoPopup = false;
+  activeVideoSrc: string | null = null;
+
+  private pendingMedia: number = 0;
+  private readonly prevScrollHeight: number = 0;
+
   constructor(
     private readonly userService: UserService,
     private readonly authService: Auth,
@@ -67,15 +73,50 @@ export class Dashboard implements OnInit, OnDestroy {
               (data.senderId === this.currentUserId && data.receiverId === selected.id))
           ) {
             this.isTyping = false;
+            data._imgError = false;
+            data._videoError = false;
+            if (data.type === 'image' || data.type === 'video') {
+              this.pendingMedia++;
+            }
             const updated = [...this.messagesSubject.value, data];
             this.messagesSubject.next(updated);
-
             if (data.senderId === selected.id) {
               const unreadIds = updated.filter(m => !m.read).map(m => m._id).filter(Boolean);
               this.socketService.markMessagesAsRead(unreadIds);
             }
+            setTimeout(() => {
+              if (this.pendingMedia === 0) {
+                this.scrollToBottom();
+              }else{
+                this.mediaLoaded();
+              }
+              // else: mediaLoaded() will handle
+
+            }, 0);
           }
-          setTimeout(() => this.scrollToBottom(), 0);
+        });
+      });
+
+      this.groupMessageSub = this.socketService.onGroupMessage().subscribe(data => {
+        this.zone.run(() => {
+          const selectedGroup = this.selectedGroupSubject.value;
+          if (selectedGroup && data.groupId === selectedGroup._id) {
+            this.isTyping = false;
+            data._imgError = false;
+            data._videoError = false;
+            data._videoLoaded = false;
+            if (data.type === 'image') { // Videos don't load immediately
+              this.pendingMedia++;
+            }
+            const updated = [...this.groupMessageSubject.value, data];
+            this.groupMessageSubject.next(updated);
+            setTimeout(() => {
+              if (this.pendingMedia === 0) {
+                this.scrollToBottom();
+              }
+              // else: mediaLoaded() will handle
+            }, 0);
+          }
         });
       });
 
@@ -97,7 +138,7 @@ export class Dashboard implements OnInit, OnDestroy {
           if (selected && selected.id === fromUserId) {
             this.typingUserId = fromUserId;
             this.isTyping = true;
-
+            setTimeout(() => this.scrollToBottom(), 0);
             clearTimeout(this.typingTimeout);
             this.typingTimeout = setTimeout(() => {
               this.isTyping = false;
@@ -213,6 +254,28 @@ export class Dashboard implements OnInit, OnDestroy {
     if (container) container.scrollTop = container.scrollHeight;
   }
 
+  mediaLoaded() {
+    this.zone.run(() => {
+      if (this.pendingMedia > 0) {
+        this.pendingMedia--;
+      }else{
+        return;
+      }
+      if (this.pendingMedia <= 0) {
+        const container = document.getElementById('chat-container');
+        if (container) {
+          if (this.loadingOlder) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = newScrollHeight - this.prevScrollHeight;
+            this.loadingOlder = false;
+          } else {
+            container.scrollTop = container.scrollHeight;
+          }
+        }
+      }
+    });
+  }
+
   onScroll(event: any) {
     const element = event.target;
     if (element.scrollTop === 0) this.loadOlderMessages();
@@ -280,6 +343,24 @@ export class Dashboard implements OnInit, OnDestroy {
 
   hasNotificationFrom(userId: string | number): boolean {
     return Array.isArray(this.notifications) && this.notifications.some(n => n.senderId === userId);
+  }
+
+  openVideoPopup(src: string) {
+    this.zone.run(() => {
+      this.activeVideoSrc = src;
+      this.showVideoPopup = true;
+      document.body.style.overflow = 'hidden'; // prevent background scroll
+      setTimeout(() => {
+        const modal = document.querySelector('[role="dialog"]') as HTMLElement;
+        modal?.focus();
+      }, 0);
+    })
+  }
+
+  closeVideoPopup() {
+    this.showVideoPopup = false;
+    this.activeVideoSrc = null;
+    document.body.style.overflow = 'auto';
   }
 
   ngOnDestroy() {
