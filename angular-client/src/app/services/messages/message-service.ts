@@ -21,4 +21,12 @@ export class MessageService {
   getUnreadCounts(): Observable<{senderId: string; count: number}[]>{
     return this.http.get<{senderId: string; count: number}[]>(`${this.apiUrl}/unread`);
   }
+
+  updateMessage(updatedMessage:MessageDto): Observable<MessageDto>{
+    return this.http.patch<MessageDto>(`${this.apiUrl}/update`, {message:updatedMessage});
+  }
+
+  deleteMessage(messageId:string):Observable<MessageDto>{
+    return this.http.delete<MessageDto>(`${this.apiUrl}/delete/${messageId}`);
+  }
 }

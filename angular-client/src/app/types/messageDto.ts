@@ -14,6 +14,7 @@ export interface MessageDto {
   type: MessageType,
   read: boolean,
   readAt: Date,
+  deleted:boolean,
   createdAt: Date,
   updatedAt: Date
 }

@@ -172,6 +172,11 @@ export class SocketService {
     });
   }
 
+  onMessageUpdate():Observable<MessageDto> {
+    return new Observable(observer => {
+      this.socket.on('message-update', data => observer.next(data));
+    })
+  }
 
   disconnect() {
     if (this.socket) {

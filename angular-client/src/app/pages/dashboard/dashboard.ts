@@ -60,6 +60,16 @@ export class Dashboard implements OnInit, OnDestroy {
 
   private pendingMedia: number = 0;
   private readonly prevScrollHeight: number = 0;
+  protected readonly window = window;
+
+  protected menuMessage:MessageDto | GroupMessageDto | null = null;
+  protected messageMenuOpen:boolean = false;
+  protected messageMenuX:number | null = null;
+  protected messageMenuY:number | null = null;
+  protected messageMenuFlip:boolean = false;
+  protected isEditingMessage:boolean =false;
+  protected originalEditingMessage:MessageDto | GroupMessageDto | null = null;
+  protected readonly Date = Date;
 
   constructor(
     private readonly userService: UserService,
@@ -220,6 +230,22 @@ export class Dashboard implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         })
       })
+
+      /** Listen for message updates */
+      this.socketService.onMessageUpdate().subscribe(data => {
+        console.log('Message updated:', data);
+        this.zone.run(() => {
+          const selected = this.selectedUserSubject.value;
+          if (selected && data.senderId === selected.id) {
+            const updated = this.messagesSubject.value.map(m =>
+              m._id === data._id ? {...m, ...data} : m
+            );
+            this.messagesSubject.next(updated);
+          }
+          this.cdr.markForCheck();
+        });
+
+      })
     });
   }
 
@@ -379,6 +405,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
 
   onMessageInput() {
+    if (this.isEditingMessage) return;
     const selectedUser = this.selectedUserSubject.value;
     if (selectedUser) {
       this.socketService.sendTyping(selectedUser.id);
@@ -445,9 +472,12 @@ export class Dashboard implements OnInit, OnDestroy {
 
   sendMessage() {
     const selectedUser = this.selectedUserSubject.value;
-    if (!this.messageText.trim() || !selectedUser) return;
-    this.socketService.sendMessage(selectedUser.id, this.messageText);
-    this.messageText = '';
+    if(!this.isEditingMessage){
+      if (!this.messageText.trim() || !selectedUser) return;
+      this.socketService.sendMessage(selectedUser.id, this.messageText);
+      this.messageText = '';
+    }
+    this.onEditMessageSend();
   }
 
   sendGroupMessage() {
@@ -522,9 +552,117 @@ export class Dashboard implements OnInit, OnDestroy {
     document.body.style.overflow = 'auto';
   }
 
+  get windowWidth(): number {
+    return window.innerWidth;
+  }
+
+  onMsgContextMenu(event: MouseEvent, msg: MessageDto | GroupMessageDto) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetMessageMenu();
+    // set menu position / state
+    this.menuMessage = msg;
+    this.messageMenuOpen = true;
+    this.messageMenuX = event.clientX;
+    this.messageMenuY = event.clientY;
+    // flip if menu would overflow the viewport (menu width ~180px)
+    this.messageMenuFlip = (event.clientX + 180 > this.windowWidth);
+    // ensure template updates (you already use OnPush)
+    this.cdr.markForCheck();
+  }
+
+  resetMessageMenu(){
+    (document.activeElement as HTMLElement)?.blur();
+    this.messageMenuOpen = false;
+    this.menuMessage = null;
+    this.messageMenuX = null;
+    this.messageMenuY = null;
+    this.messageMenuFlip = false;
+
+    this.cdr.markForCheck();
+  }
+
+  onMessageEdit(msg: MessageDto | GroupMessageDto | null) {
+    if (!msg) return;
+    this.messageText = (msg.message || '').trim();
+    this.originalEditingMessage = msg;
+    this.isEditingMessage = true;
+  }
+
+  isEditable(createdAt: string | Date, senderId: string, deleted:boolean): boolean {
+    if((senderId !== this.currentUserId && this.isEditingMessage) || deleted) return false;
+    const createdTime = new Date(createdAt).getTime();
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    return createdTime >= tenMinutesAgo ;
+  }
+
+  isDeletable(deleted:boolean, readAt: string | Date,  senderId: string): boolean {
+    if(deleted || senderId !== this.currentUserId) return false;
+    if(readAt) {
+      const readTime = new Date(readAt).getTime();
+      const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+      return readTime >= tenMinutesAgo ;
+    }
+    return true;
+  }
+
+  cancelEdit(){
+    this.isEditingMessage = false;
+    this.messageText = '';
+    this.resetMessageMenu();
+
+    this.cdr.markForCheck();
+  }
+
+  onEditMessageSend(){
+    if (!this.messageText.trim()|| !this.originalEditingMessage || this.messageText.trim() === this.originalEditingMessage?.message.trim() ) {
+      this.cancelEdit();
+      return;
+    }
+    this.originalEditingMessage.message=this.messageText.trim();
+
+    if (this.originalEditingMessage && 'receiverId' in this.originalEditingMessage) {
+      this.messageService.updateMessage(this.originalEditingMessage).subscribe({
+        next: (res) => {
+          this.cancelEdit();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Failed to update message', err);
+          this.cancelEdit();
+        }
+      });
+    } else {
+      // Not a MessageDto (likely a GroupMessageDto) — cancel or handle group updates separately
+      this.cancelEdit();
+    }
+  }
+
+  onDeleteMessage(msg: MessageDto | GroupMessageDto | null) {
+    if(!msg) return;
+    this.messageService.deleteMessage(msg._id).subscribe({
+      next: (res) => {
+        const selected = this.selectedUserSubject.value;
+        if (selected && res.receiverId === selected.id) {
+          const updated = this.messagesSubject.value.map(m =>
+            m._id === res._id ? {...m, ...res} : m
+          );
+          this.messagesSubject.next(updated);
+        }
+        this.resetMessageMenu();
+      },
+      error: (err) => {
+        console.error('Failed to update message', err);
+        this.resetMessageMenu();
+      }
+    });
+    this.cdr.markForCheck();
+  }
+
   ngOnDestroy() {
     if (this.messageSub) this.messageSub.unsubscribe();
     if (this.groupMessageSub) this.groupMessageSub.unsubscribe();
     this.socketService.disconnect();
   }
+
 }
