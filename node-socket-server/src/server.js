@@ -11,7 +11,7 @@ const PORT = process.env.PORT;
 const server = http.createServer(app);
 
 //CONNECT TO SOCKET.IO
-const io = new Server(server, { cors: { origin: process.env.FRONTEND_URL }});
+export const io = new Server(server, { cors: { origin: process.env.FRONTEND_URL }});
 ChatSocket(io);
 
 //CONNECTING TO REDIS

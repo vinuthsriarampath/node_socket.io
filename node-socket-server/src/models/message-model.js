@@ -7,7 +7,8 @@ const messageSchema = new mongoose.Schema(
         message: { type: String, required: true },
         status: { type: String, enum: ["sent", "delivered", "seen"], default: "sent" },
         read: { type: Boolean, default: false },
-        readAt: { type: Date, default: Date.now },
+        deleted: { type: Boolean, default: false },
+        readAt: { type: Date, default: null },
         type: { type: String, enum: ["text", "image", "video", "file"], default: "text" },
     },
     { timestamps: true }

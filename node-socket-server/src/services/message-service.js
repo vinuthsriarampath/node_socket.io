@@ -1,4 +1,5 @@
 import * as messageRepo from '../repositories/message-repository.js';
+import {ApiError} from "../exceptions/api-error.js";
 
 export const getAllMessagesBySenderIdAndReceiverId = async (currentUserId, receiverId, before, limit = 20) => {
     const messages = await messageRepo.getAllMessagesBySenderIdAndReceiverId(currentUserId, receiverId, before, limit);
@@ -34,4 +35,33 @@ export const countUnreadMessagesByUser = async (userId) => {
         senderId: c._id.toString(),
         count: c.count,
     }))
+}
+
+const findMessageById = async (messageId) => {
+    const message = await messageRepo.findById(messageId);
+    if(!message){
+        throw new ApiError(404, 'Message not found');
+    }
+    return message;
+}
+
+export const updateMessage = async (updatedMessage) => {
+    const message = await findMessageById(updatedMessage._id);
+    if (message.type !== 'text'){
+        throw new ApiError(400, 'Message Must be a Text Message');
+    }
+    return await messageRepo.updateMessage(updatedMessage);
+}
+
+export const deleteMessage = async (messageId,userId)=> {
+    const message = await findMessageById(messageId);
+    if(!message){
+        throw new ApiError(404, 'Message not found');
+    }
+    console.log("message",message);
+    console.log("userId",userId);
+    if(message.senderId.toString() !== userId){
+        throw new ApiError(403, 'You are not authorized to delete this message');
+    }
+    return await messageRepo.deleteMessage(messageId);
 }

@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(cookieParser()); // Parse cookies from the request (this allow us to access the cookies in the request)
 app.use(cors({
     origin: process.env.FRONTEND_URL, // Allow requests from this URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow these methods to be used in the request
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Allow these methods to be used in the request
     credentials: true, // Allow cookies to be sent in the request
 }));
 app.use(helmet({

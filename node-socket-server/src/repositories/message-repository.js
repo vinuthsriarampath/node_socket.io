@@ -1,6 +1,28 @@
 import {Message} from "../models/message-model.js";
 import mongoose from "mongoose";
 
+export async function deleteMessage(messageId) {
+    return Message.findByIdAndUpdate(
+        messageId,
+        { $set: { deleted : true } },
+        { new: true }
+    ).exec();
+}
+
+
+export async function updateMessage(updatedMessage) {
+    return Message.findByIdAndUpdate(
+        updatedMessage._id,
+        { $set: { message: updatedMessage.message } },
+        { new: true }
+    ).exec();
+}
+
+export async function findById(messageId) {
+    return Message.findById(messageId);
+}
+
+
 export const createMessage =  (messageData) => {
     const message = new Message(messageData);
     return message.save();
